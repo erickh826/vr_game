@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "bridge-001",
+  "boardWidth": 8,
+  "boardDepth": 8,
+  "bricks": [
+    {
+      "id": "b01",
+      "kind": "2x4",
+      "color": "red",
+      "x": 2,
+      "y": 0,
+      "z": 2,
+      "turns": 0
+    },
+    {
+      "id": "b02",
+      "kind": "2x4",
+      "color": "blue",
+      "x": 4,
+      "y": 0,
+      "z": 2,
+      "turns": 0
+    },
+    {
+      "id": "b03",
+      "kind": "2x4",
+      "color": "white",
+      "x": 2,
+      "y": 1,
+      "z": 2,
+      "turns": 1
+    },
+    {
+      "id": "b04",
+      "kind": "2x4",
+      "color": "yellow",
+      "x": 2,
+      "y": 1,
+      "z": 4,
+      "turns": 1
+    },
+    {
+      "id": "b05",
+      "kind": "2x2",
+      "color": "red",
+      "x": 2,
+      "y": 2,
+      "z": 3,
+      "turns": 0
+    },
+    {
+      "id": "b06",
+      "kind": "2x2",
+      "color": "blue",
+      "x": 4,
+      "y": 2,
+      "z": 3,
+      "turns": 0
+    }
+  ]
+}

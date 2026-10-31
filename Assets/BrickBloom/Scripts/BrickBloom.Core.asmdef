@@ -1,0 +1,5 @@
+{
+  "name": "BrickBloom.Core",
+  "rootNamespace": "BrickBloom",
+  "noEngineReferences": true
+}
