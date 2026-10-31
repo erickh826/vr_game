@@ -27,14 +27,15 @@ namespace BrickBloom
             (slot.y + 0.5) * BrickDefinition.LayerHeight,
             (slot.z + BrickDefinition.Depth(slot) / 2.0) * BrickDefinition.StudPitch);
 
-        public BrickSlot Resolve(BrickBoard board, string kind, string color, int turns, BoardPoint position)
+        public BrickSlot Resolve(BrickBoard board, string pieceId, int turns, BoardPoint position)
         {
-            if (board == null || !position.IsFinite) return null;
+            if (board == null || !position.IsFinite || !board.TryGetPiece(pieceId, out _) ||
+                board.TryGetSlotForPiece(pieceId, out _)) return null;
             BrickSlot best = null;
             double bestDistance = double.PositiveInfinity;
             foreach (var slot in board.Slots)
             {
-                if (!board.CanPlace(slot.id, kind, color, turns)) continue;
+                if (!board.CanPlace(pieceId, slot.id, turns)) continue;
                 var target = Center(slot);
                 double dx = position.X - target.X, dy = position.Y - target.Y, dz = position.Z - target.Z;
                 double horizontal = dx * dx + dz * dz;
@@ -46,10 +47,12 @@ namespace BrickBloom
             }
             return best;
         }
-        public bool TrySnap(BrickBoard board, string kind, string color, int turns, BoardPoint position, out BrickSlot target)
+        public bool TrySnap(BrickBoard board, string pieceId, int turns, BoardPoint position, out BrickSlot target)
         {
-            target = Resolve(board, kind, color, turns, position);
-            return target != null && board.TryPlace(target.id, kind, color, turns);
+            target = Resolve(board, pieceId, turns, position);
+            if (target != null && board.TryPlace(pieceId, target.id, turns)) return true;
+            target = null;
+            return false;
         }
     }
 }

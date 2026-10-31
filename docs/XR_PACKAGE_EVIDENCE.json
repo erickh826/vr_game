@@ -1,0 +1,96 @@
+{
+  "verifiedDate": "2026-10-31",
+  "note": "Read-only registry metadata snapshot. Proposed packages are not installed or device-validated.",
+  "packages": [
+    {
+      "source": "https://packages.unity.com/com.meta.xr.sdk.core",
+      "name": "com.meta.xr.sdk.core",
+      "version": "207.0.1",
+      "unity": "6000.0",
+      "unityRelease": "66f2",
+      "dependencies": {
+        "com.unity.xr.hands": "1.7.2",
+        "com.unity.modules.ui": "1.0.0",
+        "com.unity.modules.audio": "1.0.0",
+        "com.unity.modules.imgui": "1.0.0",
+        "com.unity.modules.imageconversion": "1.0.0",
+        "com.unity.modules.unitywebrequest": "1.0.0",
+        "com.unity.modules.unitywebrequestaudio": "1.0.0"
+      },
+      "documentationUrl": "https://developer.oculus.com/documentation/unity/",
+      "sha1": "d4cd875f54ee95c30df66cf9716914e219f77272"
+    },
+    {
+      "source": "https://packages.unity.com/com.meta.xr.sdk.interaction",
+      "name": "com.meta.xr.sdk.interaction",
+      "version": "207.0.1",
+      "unity": "2022.3",
+      "unityRelease": "15f1",
+      "dependencies": {
+        "com.unity.ugui": "1.0.0",
+        "com.unity.textmeshpro": "3.0.6"
+      },
+      "documentationUrl": "https://developer.oculus.com/documentation/unity/unity-isdk-interaction-sdk-overview/",
+      "sha1": "b0ce09a959ae0b750c01cbac3c5eaf3b3c9e9aac"
+    },
+    {
+      "source": "https://packages.unity.com/com.meta.xr.sdk.interaction.ovr",
+      "name": "com.meta.xr.sdk.interaction.ovr",
+      "version": "207.0.1",
+      "unity": "2022.3",
+      "unityRelease": "15f1",
+      "dependencies": {
+        "com.meta.xr.sdk.core": "207.0.1",
+        "com.meta.xr.sdk.interaction": "207.0.1"
+      },
+      "documentationUrl": "https://developer.oculus.com/documentation/unity/unity-isdk-interaction-sdk-overview/",
+      "sha1": "74fbc962f91e3404b7d4012c717391e2ccf1f733"
+    },
+    {
+      "source": "https://packages.unity.com/com.unity.xr.hands",
+      "name": "com.unity.xr.hands",
+      "version": "1.7.2",
+      "unity": "2021.3",
+      "unityRelease": null,
+      "dependencies": {
+        "com.unity.modules.xr": "1.0.0",
+        "com.unity.inputsystem": "1.3.0",
+        "com.unity.mathematics": "1.2.6",
+        "com.unity.xr.core-utils": "2.2.0",
+        "com.unity.xr.management": "4.0.1"
+      },
+      "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.xr.hands@1.7/manual/index.html",
+      "sha1": "6361f2b63a8e1db97ee084a3438b607baa923cde"
+    },
+    {
+      "source": "https://packages.unity.com/com.unity.xr.management",
+      "name": "com.unity.xr.management",
+      "version": "4.4.0",
+      "unity": "2019.4",
+      "unityRelease": "15f1",
+      "dependencies": {
+        "com.unity.modules.vr": "1.0.0",
+        "com.unity.modules.xr": "1.0.0",
+        "com.unity.modules.subsystems": "1.0.0",
+        "com.unity.xr.legacyinputhelpers": "2.1.7"
+      },
+      "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.xr.management@4.4/manual/index.html",
+      "sha1": "23603bb7faacb609310a19e54cfda9101dc5dd20"
+    },
+    {
+      "source": "https://packages.unity.com/com.unity.xr.openxr",
+      "name": "com.unity.xr.openxr",
+      "version": "1.15.1",
+      "unity": "2021.3",
+      "unityRelease": null,
+      "dependencies": {
+        "com.unity.inputsystem": "1.6.3",
+        "com.unity.xr.core-utils": "2.3.0",
+        "com.unity.xr.management": "4.4.0",
+        "com.unity.xr.legacyinputhelpers": "2.1.2"
+      },
+      "documentationUrl": "https://docs.unity3d.com/Packages/com.unity.xr.openxr@1.15/manual/index.html",
+      "sha1": "05fb1a7d75d118139c283c8d76b7f99a655364a8"
+    }
+  ]
+}

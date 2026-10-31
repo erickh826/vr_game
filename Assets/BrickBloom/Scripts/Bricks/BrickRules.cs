@@ -6,7 +6,7 @@ namespace BrickBloom
         public static bool ValidTurns(int turns) => turns >= 0 && turns <= 3;
         public static bool EquivalentRotation(string kind, int a, int b) =>
             BrickDefinition.IsKind(kind) && ValidTurns(a) && ValidTurns(b) &&
-            (kind == "2x2" || a % 2 == b % 2);
+            (kind == BrickKinds.TwoByTwo || a % 2 == b % 2);
 
         public static bool Matches(BrickSlot target, string kind, string color, int turns) =>
             target != null && target.kind == kind && target.color == color &&
