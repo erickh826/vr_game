@@ -2,6 +2,8 @@
 
 Audit date: 2026-10-31 (Hong Kong). This is an executable plan, not a claim of XR installation or hardware validation. No package, scene, renderer asset or project setting was changed in this review.
 
+Update 2026-11-01: Step 1 package installation and Editor tests have now been executed. See [actual resolved versions, test evidence and SDK import side effects](XR_PACKAGE_VALIDATION.md). The tables below retain the original audit/proposal; the committed packages-lock.json is authoritative for installed versions. Android profile/configuration and hardware gates remain pending.
+
 ## Current readiness
 
 | Area | Observed state | Action before hardware build |
