@@ -1,5 +1,5 @@
 {
-    "generatedUtc": "2026-11-02T01:03:41.7597968Z",
+    "generatedUtc": "2026-11-02T02:23:44.7403656Z",
     "unityVersion": "6000.0.85f1",
     "activeTarget": "Android",
     "applicationId": "com.brickbloom.mr.dev",
@@ -8,7 +8,7 @@
     "profilePath": "Assets/BrickBloom/BuildProfiles/QuestDevelopment.asset",
     "minimumApi": 32,
     "targetApi": 34,
-    "metaTasksEvaluated": 89,
+    "metaTasksEvaluated": 93,
     "metaRequiredIssues": 0,
     "initializeOnStartup": true,
     "targetsQuest3": true,
@@ -24,6 +24,7 @@
         "UnityEngine.XR.Hands.OpenXR.MetaHandTrackingAim",
         "Meta.XR.MetaXRFeature",
         "Meta.XR.MetaXRFoveationFeature",
+        "Meta.XR.MetaXRSubsampledLayout",
         "UnityEngine.XR.OpenXR.Features.Interactions.OculusTouchControllerProfile",
         "UnityEngine.XR.Hands.OpenXR.HandTracking"
     ],
@@ -51,6 +52,10 @@
             "required": false
         },
         {
+            "message": "[Miscellaneous] Using Stage tracking origin is not recommended for full immersive VR apps, or if you want to have a consistent tracking space for mixed reality experiences under all the cases of no boundaries (i.e. boundaryless), roomscale boundaries, and stationary boundaries.\n\nYou can click the 'Apply' button to set the tracking origin to Floor Level, and use a Spatial Anchor to achieve that. Click the Documentation link to find more details.",
+            "required": false
+        },
+        {
             "message": "[OpenXR] [Optional] Switch to use InputSystem.XR.PoseControl instead of OpenXR.Input.PoseControl, which will be deprecated in a future release.",
             "required": false
         },
@@ -71,19 +76,7 @@
             "required": false
         },
         {
-            "message": "[Rendering] Subsampled Layout should be enabled to improve GPU performance when foveation is enabled.",
-            "required": false
-        },
-        {
-            "message": "[Rendering] Use recommended MSAA level for Android",
-            "required": false
-        },
-        {
-            "message": "[Rendering] Use Stereo Rendering Instancing",
-            "required": false
-        },
-        {
-            "message": "[Rendering] Using HDR may significantly impact performance. It is recommended to disable HDR.",
+            "message": "[Rendering] Using Dynamic Resolution can help improve quality when GPU Utilization is low, and improve framerate in GPU heavy scenes. It also unlocks GPU Level 5 on Meta Quest 2, Pro and 3. Consider disabling it when profiling and optimizing your application.",
             "required": false
         }
     ]

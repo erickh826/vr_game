@@ -8,6 +8,8 @@ Update 2026-11-02: Step 1 Android configuration gate is now passed. See [configu
 
 ## Current readiness
 
+Update 2026-11-02, Gate A software milestone: XRFoundation scene, Quest URP assets, source Android manifest and explicit profile scene override are implemented; an IL2CPP ARM64 Development APK has been built. See [Gate A evidence and hardware checklist](GATE_A_PASSTHROUGH.md). The original Step 1 CLI report omitted cooldown tasks; the corrected validator evaluates 93 tasks with the scene open, including GameActivity. Gate A still requires a Quest 3 hardware pass before Gate B.
+
 | Area | Observed state | Action before hardware build |
 | --- | --- | --- |
 | Editor | Unity 6000.0.85f1 installed and compiles core/tests | Retain this Editor; no upgrade needed to meet documented minimum |

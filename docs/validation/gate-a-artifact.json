@@ -1,0 +1,21 @@
+{
+  "generatedUtc": "2026-11-02T02:26:23.977088+00:00",
+  "apkPath": "Builds/Quest/BrickBloomMR-XRFoundation.apk",
+  "apkBytes": 65350688,
+  "apkSha256": "bede1faa9b17b5173dec2fc37c943d7f351507d69ad979cad8963125b790420c",
+  "manifestBadging": [
+    "package: name='com.brickbloom.mr.dev' versionCode='1' versionName='0.1.0' platformBuildVersionName='14' platformBuildVersionCode='34' compileSdkVersion='34' compileSdkVersionCodename='14'",
+    "sdkVersion:'32'",
+    "targetSdkVersion:'34'",
+    "launchable-activity: name='com.unity3d.player.UnityPlayerGameActivity'  label='' icon=''",
+    "  uses-feature: name='com.oculus.feature.PASSTHROUGH'",
+    "  uses-feature: name='oculus.software.handtracking'",
+    "native-code: 'arm64-v8a'"
+  ],
+  "packageLockSha256": "8f67fb8edb3bc7baa0dfdaccce6e330c64487c34adba55e023a9dfc4eb243a33",
+  "unity": "6000.0.85f1",
+  "ndk": "27.2.12479018",
+  "jdk": "17.0.18+8",
+  "gradle": "9.3.1",
+  "hardwareVerified": false
+}

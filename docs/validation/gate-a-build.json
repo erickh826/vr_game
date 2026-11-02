@@ -1,0 +1,11 @@
+{
+    "generatedUtc": "2026-11-02T02:25:12.4480679Z",
+    "result": "Succeeded",
+    "outputPath": "Builds/Quest/BrickBloomMR-XRFoundation.apk",
+    "scene": "Assets/BrickBloom/Scenes/XRFoundation.unity",
+    "errors": 0,
+    "warnings": 4,
+    "bytes": 1095445663,
+    "seconds": 50.1163964,
+    "hardwareVerified": false
+}

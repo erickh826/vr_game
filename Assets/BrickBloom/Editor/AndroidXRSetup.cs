@@ -28,6 +28,7 @@ namespace BrickBloom.Editor
         private const string ProfilePath = "Assets/BrickBloom/BuildProfiles/QuestDevelopment.asset";
         private const string ReportPath = "docs/validation/android-xr.json";
         private const string PendingValidationKey = "BrickBloom.AndroidXR.PendingValidation";
+        private static string metaReportPath;
         private const BindingFlags InternalInstance = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
 
         public static void ApplyAndValidate()
@@ -177,8 +178,17 @@ namespace BrickBloom.Editor
             if (index < 0 || index + 1 >= args.Length)
                 throw new ArgumentException("Pass -reportFile docs/validation/android-meta.json.");
             string metaPath = args[index + 1];
-            // Public SDK CLI invokes OVRProjectSetup.UpdateTasks for the active target, blocking.
-            OVRProjectSetupCLI.GenerateProjectSetupReport();
+            // Core 207's public CLI skips heavy tasks in its two-minute cooldown.
+            // Use the verified internal overload to evaluate them too, without fixing/ignoring rules.
+            metaReportPath = metaPath;
+            var setup = typeof(OVRProjectSetupCLI).Assembly.GetType("OVRProjectSetup", true);
+            var update = setup.GetMethod("UpdateTasks", BindingFlags.Static | BindingFlags.NonPublic);
+            var parameters = update?.GetParameters();
+            if (parameters == null || parameters.Length != 6 || parameters[5].Name != "bypassCooldown")
+                throw new MissingMethodException("Meta UpdateTasks signature changed.");
+            var callback = Delegate.CreateDelegate(parameters[4].ParameterType,
+                typeof(AndroidXRSetup).GetMethod(nameof(SaveMetaReport), BindingFlags.Static | BindingFlags.NonPublic));
+            update.Invoke(null, new object[] { Group, null, Enum.ToObject(parameters[2].ParameterType, 0), true, callback, true });
             var meta = JsonUtility.FromJson<MetaReport>(File.ReadAllText(metaPath));
             if (meta.buildTargetGroup != "Android" || meta.tasksStatus == null || meta.tasksStatus.Length == 0)
                 throw new InvalidOperationException("Meta returned an empty or wrong-platform report.");
@@ -234,6 +244,12 @@ namespace BrickBloom.Editor
             SessionState.SetBool(PendingValidationKey, false);
             Debug.LogException(ex);
             EditorApplication.Exit(1);
+        }
+        private static void SaveMetaReport(object processor)
+        {
+            var summary = processor.GetType().GetProperty("Summary").GetValue(processor);
+            summary.GetType().GetMethod("GenerateReport").Invoke(summary,
+                new object[] { Path.GetDirectoryName(metaReportPath), Path.GetFileName(metaReportPath) });
         }
         [Serializable] private sealed class MetaReport { public string buildTargetGroup; public MetaTask[] tasksStatus; }
         [Serializable] private sealed class MetaTask { public string level; public bool isDone; }

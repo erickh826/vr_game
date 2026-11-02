@@ -2,6 +2,8 @@
 
 Completed 2026-11-02 (Hong Kong), on feature/xr-package-foundation. This completes Phase 2 Step 1 project configuration and Editor validation. It is not an APK build or a hardware/passthrough/hand-grab test.
 
+Correction discovered during Gate A: Core 207's public CLI skips HeavyProcessing tasks still in their two-minute cooldown. The original 89-task report was incomplete and did not establish that every Required task passed. AndroidXRSetup now invokes the source-verified internal UpdateTasks overload with bypassCooldown=true and saves its completed summary. This exposed the missing source-manifest GameActivity rule. XRFoundationSetup creates the missing source manifest through the SDK API; see GATE_A_PASSTHROUGH.md and the latest reports for the corrected, expanded check. No rules are ignored or suppressed.
+
 ## Applied configuration
 
 | Area | Saved value |

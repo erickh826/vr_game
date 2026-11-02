@@ -1,5 +1,5 @@
 {
-    "createdAt": "11/2/2026 1:03:41 AM",
+    "createdAt": "11/2/2026 2:23:44 AM",
     "buildTargetGroup": "Android",
     "projectName": "My project (3)",
     "unityVersion": "6000.0.85f1",
@@ -20,16 +20,16 @@
             "isDone": false
         },
         {
-            "uid": "f8d41a75c37f265934380255e5eece30",
-            "group": "Rendering",
-            "message": "Subsampled Layout should be enabled to improve GPU performance when foveation is enabled.",
+            "uid": "d091363c2f43fb028e3651f27ae2ba48",
+            "group": "Features",
+            "message": "For MR apps it's recommended to disable Show Splash Screen (in Player Settings). Otherwise it will result in an inconsistent experience",
             "level": "Recommended",
             "isDone": false
         },
         {
-            "uid": "d091363c2f43fb028e3651f27ae2ba48",
-            "group": "Features",
-            "message": "For MR apps it's recommended to disable Show Splash Screen (in Player Settings). Otherwise it will result in an inconsistent experience",
+            "uid": "2b21b26bac8e99c6e21b9daa3effdd89",
+            "group": "Miscellaneous",
+            "message": "Using Stage tracking origin is not recommended for full immersive VR apps, or if you want to have a consistent tracking space for mixed reality experiences under all the cases of no boundaries (i.e. boundaryless), roomscale boundaries, and stationary boundaries.\n\nYou can click the 'Apply' button to set the tracking origin to Floor Level, and use a Spatial Anchor to achieve that. Click the Documentation link to find more details.",
             "level": "Recommended",
             "isDone": false
         },
@@ -76,23 +76,9 @@
             "isDone": false
         },
         {
-            "uid": "0c9572929db2e8975ae93ec7dc3239d9",
+            "uid": "740be0d3e1147ce69a1863fa64086e3b",
             "group": "Rendering",
-            "message": "Use Stereo Rendering Instancing",
-            "level": "Recommended",
-            "isDone": false
-        },
-        {
-            "uid": "d06541f854291e7c2401cf2b86492039",
-            "group": "Rendering",
-            "message": "Using HDR may significantly impact performance. It is recommended to disable HDR.",
-            "level": "Recommended",
-            "isDone": false
-        },
-        {
-            "uid": "23622a94b395175c7583687cd1da19d8",
-            "group": "Rendering",
-            "message": "Use recommended MSAA level for Android",
+            "message": "Using Dynamic Resolution can help improve quality when GPU Utilization is low, and improve framerate in GPU heavy scenes. It also unlocks GPU Level 5 on Meta Quest 2, Pro and 3. Consider disabling it when profiling and optimizing your application.",
             "level": "Recommended",
             "isDone": false
         },
@@ -129,6 +115,13 @@
             "group": "Features",
             "message": "Stationary tracking origin can only be used when experimental features are enabled.",
             "level": "Required",
+            "isDone": true
+        },
+        {
+            "uid": "e8f5b2e312f2427288399ffc4260389c",
+            "group": "Compatibility",
+            "message": "Your current settings do not match the Android Manifest file",
+            "level": "Optional",
             "isDone": true
         },
         {
@@ -174,10 +167,24 @@
             "isDone": true
         },
         {
+            "uid": "555a8939e2116242b33de093147cd755",
+            "group": "Compatibility",
+            "message": "Always specify single \"GameActivity\" application entry on Unity 2023.2+",
+            "level": "Required",
+            "isDone": true
+        },
+        {
             "uid": "e958b7e7205af9907dee9c9d8e57b89a",
             "group": "Packages",
             "message": "OpenXR must be added to the XR Plugin active loaders",
             "level": "Required",
+            "isDone": true
+        },
+        {
+            "uid": "f8d41a75c37f265934380255e5eece30",
+            "group": "Rendering",
+            "message": "Subsampled Layout should be enabled to improve GPU performance when foveation is enabled.",
+            "level": "Recommended",
             "isDone": true
         },
         {
@@ -244,6 +251,13 @@
             "isDone": true
         },
         {
+            "uid": "6b7c42dcdf63ff8a34fc2b05fbea0efa",
+            "group": "Features",
+            "message": "When using Passthrough, set the camera background to transparent to reveal the passthrough feed",
+            "level": "Required",
+            "isDone": true
+        },
+        {
             "uid": "c88c58fdcfbe4355a2432bb0b62767dc",
             "group": "Features",
             "message": "For MR apps it's recommended to disable Virtual Reality Splash Screen (in Player Settings). Otherwise it will result in an inconsistent experience",
@@ -297,13 +311,6 @@
             "group": "Features",
             "message": "Automatically request the Eye Tracking permission on startup",
             "level": "Optional",
-            "isDone": true
-        },
-        {
-            "uid": "2b21b26bac8e99c6e21b9daa3effdd89",
-            "group": "Miscellaneous",
-            "message": "Using Stage tracking origin is not recommended for full immersive VR apps, or if you want to have a consistent tracking space for mixed reality experiences under all the cases of no boundaries (i.e. boundaryless), roomscale boundaries, and stationary boundaries.\n\nYou can click the 'Apply' button to set the tracking origin to Floor Level, and use a Spatial Anchor to achieve that. Click the Documentation link to find more details.",
-            "level": "Recommended",
             "isDone": true
         },
         {
@@ -566,6 +573,13 @@
             "isDone": true
         },
         {
+            "uid": "0c9572929db2e8975ae93ec7dc3239d9",
+            "group": "Rendering",
+            "message": "Use Stereo Rendering Instancing",
+            "level": "Recommended",
+            "isDone": true
+        },
+        {
             "uid": "e8e95f5b0b55b21a1a42f288eba158eb",
             "group": "Rendering",
             "message": "Setting the Intermediate Texture Mode to \"Always\" might have a performance impact, it is recommended to use \"Auto\"",
@@ -615,6 +629,13 @@
             "isDone": true
         },
         {
+            "uid": "d06541f854291e7c2401cf2b86492039",
+            "group": "Rendering",
+            "message": "Using HDR may significantly impact performance. It is recommended to disable HDR.",
+            "level": "Recommended",
+            "isDone": true
+        },
+        {
             "uid": "ff801ae4aaaaef7574556bc1c90fb37d",
             "group": "Rendering",
             "message": "Using FSR may significantly impact performance. It is recommended to switch Upscaling Filter to Auto.",
@@ -625,6 +646,13 @@
             "uid": "c3c0672618b712c33f4dc51fb1fa34b5",
             "group": "Rendering",
             "message": "Using the camera stack may significantly impact performance. It is not recommended to use the camera stack feature.",
+            "level": "Recommended",
+            "isDone": true
+        },
+        {
+            "uid": "23622a94b395175c7583687cd1da19d8",
+            "group": "Rendering",
+            "message": "Use recommended MSAA level for Android",
             "level": "Recommended",
             "isDone": true
         }
