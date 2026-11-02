@@ -4,6 +4,8 @@ Audit date: 2026-10-31 (Hong Kong). This is an executable plan, not a claim of X
 
 Update 2026-11-01: Step 1 package installation and Editor tests have now been executed. See [actual resolved versions, test evidence and SDK import side effects](XR_PACKAGE_VALIDATION.md). The tables below retain the original audit/proposal; the committed packages-lock.json is authoritative for installed versions. Android profile/configuration and hardware gates remain pending.
 
+Update 2026-11-02: Step 1 Android configuration gate is now passed. See [configuration, reproduction commands and dirty-file handling](ANDROID_XR_CONFIGURATION.md) and [machine-readable gate report](validation/android-xr.json). Meta Android Required issues = 0; OpenXR/BuildValidation errors = 0; Edit Mode 47/47 pass. Hardware Gates A and B below remain pending.
+
 ## Current readiness
 
 | Area | Observed state | Action before hardware build |

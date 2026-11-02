@@ -1,0 +1,90 @@
+{
+    "generatedUtc": "2026-11-02T01:03:41.7597968Z",
+    "unityVersion": "6000.0.85f1",
+    "activeTarget": "Android",
+    "applicationId": "com.brickbloom.mr.dev",
+    "handTracking": "HandsOnly",
+    "passthrough": "Required",
+    "profilePath": "Assets/BrickBloom/BuildProfiles/QuestDevelopment.asset",
+    "minimumApi": 32,
+    "targetApi": 34,
+    "metaTasksEvaluated": 89,
+    "metaRequiredIssues": 0,
+    "initializeOnStartup": true,
+    "targetsQuest3": true,
+    "developmentBuild": true,
+    "gatePassed": true,
+    "graphicsApis": [
+        "Vulkan"
+    ],
+    "loaders": [
+        "UnityEngine.XR.OpenXR.OpenXRLoader"
+    ],
+    "enabledFeatures": [
+        "UnityEngine.XR.Hands.OpenXR.MetaHandTrackingAim",
+        "Meta.XR.MetaXRFeature",
+        "Meta.XR.MetaXRFoveationFeature",
+        "UnityEngine.XR.OpenXR.Features.Interactions.OculusTouchControllerProfile",
+        "UnityEngine.XR.Hands.OpenXR.HandTracking"
+    ],
+    "openXrIssues": [
+        {
+            "message": "[Optional] Switch to use InputSystem.XR.PoseControl instead of OpenXR.Input.PoseControl, which will be deprecated in a future release.",
+            "required": false
+        },
+        {
+            "message": "[Optional] Switch to use StickControl thumbsticks instead of Vector2Control, but may break existing projects that have code dependencies to the Vector2Control type. StickControl allows more input options for thumbstick-based control, such as acting as both a combined 2D vector, two independent axes or a four-way Dpad with 4 independent buttons.",
+            "required": false
+        }
+    ],
+    "buildValidationIssues": [
+        {
+            "message": "[Compatibility] Disable hand pinch detection through OVRInput, which will be deprecated in a future release. If your project utilizes this behavior, please update your project to use the recommended API for detecting hand pinches going forward: OVRHand.GetFingerIsPinching.",
+            "required": false
+        },
+        {
+            "message": "[Features] For MR apps it's recommended to disable Show Splash Screen (in Player Settings). Otherwise it will result in an inconsistent experience",
+            "required": false
+        },
+        {
+            "message": "[Features] Newest Meta XR Simulator not installed, consider installing it",
+            "required": false
+        },
+        {
+            "message": "[OpenXR] [Optional] Switch to use InputSystem.XR.PoseControl instead of OpenXR.Input.PoseControl, which will be deprecated in a future release.",
+            "required": false
+        },
+        {
+            "message": "[OpenXR] [Optional] Switch to use StickControl thumbsticks instead of Vector2Control, but may break existing projects that have code dependencies to the Vector2Control type. StickControl allows more input options for thumbstick-based control, such as acting as both a combined 2D vector, two independent axes or a four-way Dpad with 4 independent buttons.",
+            "required": false
+        },
+        {
+            "message": "[Quality] Enable Anisotropic Filtering on a per-texture basis",
+            "required": false
+        },
+        {
+            "message": "[Quality] Set maximum pixel lights count to 1",
+            "required": false
+        },
+        {
+            "message": "[Rendering] Enable Legacy Graphics Jobs. This can help performance if your application is main thread bound.",
+            "required": false
+        },
+        {
+            "message": "[Rendering] Subsampled Layout should be enabled to improve GPU performance when foveation is enabled.",
+            "required": false
+        },
+        {
+            "message": "[Rendering] Use recommended MSAA level for Android",
+            "required": false
+        },
+        {
+            "message": "[Rendering] Use Stereo Rendering Instancing",
+            "required": false
+        },
+        {
+            "message": "[Rendering] Using HDR may significantly impact performance. It is recommended to disable HDR.",
+            "required": false
+        }
+    ]
+}
