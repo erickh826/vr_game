@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-03",
+  "timezone": "Asia/Hong_Kong",
+  "device": "Quest 3",
+  "package": "com.brickbloom.mr.dev",
+  "previousInstalledApkSha256": "bede1faa9b17b5173dec2fc37c943d7f351507d69ad979cad8963125b790420c",
+  "installedApkSha256": "e4fb5acd645e6059fadb5a0cbb9d9eb857740f0253f9013e9296bbc1fb657c84",
+  "apkBytes": 90174905,
+  "installResult": "Success",
+  "installedHashMatchesLocal": true,
+  "launchResult": "Activity started; process observed",
+  "passthroughInitializationObserved": true,
+  "gateBDiagnosticsObserved": true,
+  "grabReleaseHardwareAcceptance": "pending",
+  "lastObservedLifecycle": "paused=True, focused=False; leftCycles=0, rightCycles=0",
+  "logPath": "Logs/brickbloom-gateb-device-launch.log",
+  "sourceState": "Gate B implementation has pre-existing uncommitted changes; not committed by this deployment task."
+}
