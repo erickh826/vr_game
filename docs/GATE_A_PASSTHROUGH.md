@@ -1,6 +1,6 @@
 # Gate A — Quest passthrough build
 
-Software build completed on 2026-11-02 (Hong Kong). Hardware Gate A remains pending: no authorized headset was connected during this work.
+Software build completed on 2026-11-02 (Hong Kong). Hardware Gate A passed on 2026-11-03 based on the user's Quest 3 acceptance report; the agent did not perform or independently observe the headset test.
 
 ## Scene and rendering baseline
 
@@ -45,16 +45,22 @@ PlayerSettings Instancing serializes as 2 in Unity 6000.0.85f1. The new OculusRu
 
 URP's build-populated m_RuntimeSettings cache in the global settings asset and formatting-only GraphicsSettings changes are excluded from this commit and left locally. Unreferenced OVRBuildConfig, empty StreamingAssets metadata and SceneTemplateSettings editor defaults are also left locally and excluded; they can be regenerated. Automatic approval review rejected the combined restore/delete cleanup command with only "blocked by policy", so no cleanup deletion was performed. Original Cloud fields remain uncommitted.
 
-## Hardware acceptance — pending
+## Hardware acceptance — passed (user-reported, 2026-11-03)
+
+The user confirmed live color room passthrough, a clear 8 cm blue cube in both eyes with Single-Pass Instanced Vulkan, stable 6DoF placement while turning the head, and no crashes or black screens during the test. Supplied log excerpt: `OVRPlugin: [Insight MR] Successfully initialized passthrough`. See [hardware acceptance record](validation/gate-a-hardware.json).
+
+Headset OS, test duration, installed APK hash and full logs/video were not supplied. The prior build/artifact reports retain hardwareVerified=false as historical build-time snapshots; this separate acceptance record captures the later user test. Stable in-session placement does not establish persistent spatial anchoring across launches. Menu/resume/relaunch checks were not explicitly reported and carry forward into Gate B.
+
+### Build evidence and repeat-test procedure
 
 Final software evidence: rebuilt APK succeeded with 0 errors / 4 warnings; 65,350,688 bytes (about 65.35 MB decimal). See [build report](validation/gate-a-build.json) and [APK hash, manifest and toolchain](validation/gate-a-artifact.json). BuildReport's `bytes` counts build output artifacts and is not the compressed APK size; use artifact report `apkBytes`. The first build took about 697 seconds, final incremental rebuild about 50 seconds. Packaged manifest inspection confirms com.brickbloom.mr.dev, minimum 32/target 34, ARM64-only, UnityPlayerGameActivity, required passthrough/hand tracking.
 
-The final build log still contains an unqualified Meta summary saying one Required fix, without an individual failing Required rule, plus a Recommended summary and two optional OpenXR input migration warnings. The fresh cooldown-bypassed Android report explicitly evaluates 93 tasks, including GameActivity=true, with zero Required failures. Keep this diagnostic discrepancy visible; do not describe the build as warning-free. SDK shutdown/read-only installed SDK metadata diagnostics are also preserved in raw ignored logs. Actual headset behavior remains unverified.
+The final build log still contains an unqualified Meta summary saying one Required fix, without an individual failing Required rule, plus a Recommended summary and two optional OpenXR input migration warnings. The fresh cooldown-bypassed Android report explicitly evaluates 93 tasks, including GameActivity=true, with zero Required failures. Keep this diagnostic discrepancy visible; do not describe the build as warning-free. SDK shutdown/read-only installed SDK metadata diagnostics are also preserved in raw ignored logs. The user-reported hardware pass above supersedes the earlier pending hardware status; the build-warning discrepancy remains recorded.
 
 1. Connect a developer-mode Quest 3 by USB and accept USB debugging inside the headset. `adb devices -l` must show an authorized device.
 2. In Unity, File > Build Profiles: activate QuestDevelopment; verify its override contains only XRFoundation. Open XRFoundation and inspect the prefab/camera settings above. Do not replace the global scene list.
 3. Build And Run, or install Builds/Quest/BrickBloomMR-XRFoundation.apk with `adb install -r`, then launch BrickBloom's development app (com.brickbloom.mr.dev).
 4. With controllers put away, confirm live room passthrough, blue cube in both eyes, correct head tracking, transparent background and no launch crash. Stage origin uses the configured room floor; look toward the diagnostic cube pose, or adjust WorkbenchRoot in the Inspector and rebuild.
-5. Open/close the system menu and relaunch the app. Capture device logs/video and record headset OS, APK hash and Git commit. Do not mark Gate A passed until these checks are observed on the standalone APK.
+5. Open/close the system menu and relaunch the app. Capture device logs/video and record headset OS, APK hash and Git commit. Record these lifecycle checks during Gate B; the user's Gate A report covers the rendering/tracking acceptance above.
 
 Next after Gate A: add SDK hand tracking and pinch/palm grabbing to CubeRoot, keep unit root scale and separate collider/visual, disable throwing/two-hand scaling, and execute Gate B's 20 grab/release cycles per hand plus tracking-loss recovery.

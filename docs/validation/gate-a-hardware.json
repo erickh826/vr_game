@@ -1,0 +1,27 @@
+{
+  "gate": "A",
+  "status": "passed",
+  "reportedDate": "2026-11-03",
+  "timezone": "Asia/Hong_Kong",
+  "device": "Meta Quest 3",
+  "evidenceSource": "user_report_in_chat",
+  "agentPerformedHardwareTest": false,
+  "checks": {
+    "colorRoomPassthrough": "passed",
+    "bothEyeCubeRendering": "passed",
+    "sixDofWorldStability": "passed",
+    "noCrashOrBlackScreenDuringTest": "passed"
+  },
+  "reportedRendering": "Single-Pass Instanced Vulkan",
+  "reportedCubeSizeMeters": 0.08,
+  "providedLogExcerpt": "OVRPlugin: [Insight MR] Successfully initialized passthrough",
+  "headsetOs": null,
+  "testDuration": null,
+  "installedApkSha256": null,
+  "fullLogOrVideoPath": null,
+  "notExplicitlyReported": [
+    "system menu/resume",
+    "relaunch recovery"
+  ],
+  "nextGate": "B"
+}
