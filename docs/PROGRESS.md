@@ -193,3 +193,37 @@ APK c34d80a7…, log Logs/brickbloom-workbench-step1.log (18:56–18:58). 0 Unit
 - User observation: bricks pass through each other. Expected in this step: pieces are kinematic and nothing resolves piece-to-piece contact; the specification makes snapping, not physics, decide placement.
 
 Not covered here: left hand and palm on brick pieces, pause/resume with pieces, low-confidence release on pieces. Not committed.
+
+## 2026-11-13 — Phase 3 step 2: snap on release, yaw-derived turns, ghost targets (hardware test pending)
+
+User decisions: derive quarter turns from the piece's actual orientation at release (rotate button deferred, may be added later as an aid); keep the current workbench height.
+
+- Core: BrickRules.NearestTurns(yawDegrees) rounds a yaw about board up to 0..3 and rejects non-finite input.
+- BrickWorkbench.TryPlaceReleased is the release transaction: requires the piece's up axis within 60 degrees of board up, takes turns from yaw at that instant, calls SnapResolver.TrySnap with the piece ID and board-local body centre, then applies the committed slot centre and canonical rotation and raises PlacementChanged. Logs Snap / SnapRejected (Tilted, NoEligibleTarget) and Completed.
+- BrickPiece gained Placed state (PlaceAt, ReturnToTray is a no-op once placed). BrickGrabAdapter: a user release either snaps or returns the piece to supply (no more floating pieces); tracking loss, low confidence, cancel, pause and focus loss return to supply without attempting a snap; placed pieces have their SDK interactables disabled on the next Update, outside the SDK release callbacks. The post-release tracking watch and out-of-reach rule were removed as redundant with return-on-reject.
+- BrickGhostRenderer (brought forward from step 3 so targets are visible): one translucent box per slot in the slot colour, shown only while the slot is empty and fully supported.
+- Editor: BrickWorkbenchSetup.ConfigureSnapping adds the ghost material, prefab and renderer; BuildApk takes -brickbloomBuildEvidence <file>.json (default build-latest.json) so gate records are no longer overwritten.
+- Not yet: reset, HUD, completion feedback, rotate button, stale-callback generation guard (no reset exists to race with).
+
+Evidence: Edit Mode 75/75 passed, 0 failed/skipped (Logs/brickbloom-snapping-editmode.xml). Batch configure succeeded, preflight passed; scene gained 15 lines and lost none versus the pre-change copy. Android build succeeded (docs/validation/workbench-step2-build.json); APK 90,187,675 bytes, SHA256 84eff92f7fb4ca7431f30d45a43b2eff43eefa2ee2440d83571d8842aabe2ba4, installed with adb install -r, installed hash verified equal. Not verified on the headset. Not committed.
+
+## 2026-11-13 — Step 2 on headset: bridge completed; locomotion disabled; snap preview added (retest pending)
+
+Run on APK 84eff92f… (Logs/brickbloom-workbench-step2.log, 19:20–19:23), user performed. 0 Unity errors/exceptions.
+
+- All six pieces snapped and Completed was logged 2 min 22 s after start (b02, b01, b03, b04, b05, b06; left and right hand pinches). 20 releases were rejected with NoEligibleTarget and returned to supply. Most rejections with correct piece/orientation were vertical: released 4–9 cm above the target centre against the 3.2 cm rule (e.g. p04 at turns 3 with 2.9 cm horizontal error but 4.2 cm vertical). Several were upper-layer pieces tried before their support was complete (rule working). Yaw-derived turns resolved correctly (turns 3 accepted for the turns-1 slots by parity). User: rotation is sometimes awkward; wrong-colour rejection confirmed as intended.
+- User report: "the whole board sank". The log shows the workbench was placed once and never moved. Read-only scene audit (LocomotionAudit.Report) found the comprehensive rig's hand microgesture locomotion active on both hands (teleport, step, turn) plus the Locomotor/FirstPersonLocomotor that moves the camera rig; a hand gesture moving the rig is the probable cause (not confirmed by a locomotion log line).
+- Fix: LocomotionAudit.Disable deactivated 12 objects through the Editor API (all locomotion gesture sources on hands and controllers, BodyTeleportInteractor and the Locomotor object) and verified none remain active; preflight passed. Scene diff versus the pre-change copy: active-state overrides only.
+- Added snap preview: BrickPiece.IsHeld (set by the grab adapter), BrickWorkbench.PreviewTargetSlotId (read-only Resolve with the same upright/yaw reading as release), and BrickGhostRenderer brightens the ghost a held piece would snap to (alpha 0.35 -> 0.85). No rule or tolerance change; the vertical tolerance question is with the user.
+
+Evidence: Edit Mode 75/75 passed. Android build succeeded; APK SHA256 fc353102220b48e7cd7ccb588030f74e6ddf3c73cb96b4defc70f769e3616345 installed and installed hash verified equal. Locomotion fix and preview not yet verified on the headset. Not committed.
+
+## 2026-11-13 — Step 2 retest on headset (user performed)
+
+APK fc353102…, Logs/brickbloom-workbench-step2b.log (capture started after the app was already running, so the Ready/Placed lines are not in it). 0 Unity errors/exceptions; no FirstPersonLocomotor warning appears, consistent with the Locomotor being inactive.
+
+- 6 Snapped, 3 Rejected, Completed 6/6 logged at 19:33:37. No Select was logged on any piece after it snapped.
+- User confirms the negative cases behave as intended: release far from a ghost returns to supply; red piece on the blue ghost returns; second-layer piece without rotation returns; placed pieces cannot be picked up. User: "smoother now" with the snap preview.
+- Rejections dropped from 20 (previous run) to 3 for one full build. The 3.2 cm vertical tolerance is unchanged; the user did not ask to widen it.
+- The user did not mention the board sinking again in this run; not explicitly confirmed as fixed.
+- Follow-up from the user: the board did not sink again after locomotion was disabled. Step 2 committed on feature/offline-brick-workbench (not pushed).

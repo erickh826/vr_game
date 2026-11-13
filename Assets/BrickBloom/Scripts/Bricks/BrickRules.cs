@@ -1,9 +1,18 @@
+using System;
 using System.Collections.Generic;
 namespace BrickBloom
 {
     public static class BrickRules
     {
         public static bool ValidTurns(int turns) => turns >= 0 && turns <= 3;
+
+        // Nearest quarter turn (0..3) for a yaw about board up, in degrees; positive yaw turns board +Z toward +X.
+        public static int NearestTurns(double yawDegrees)
+        {
+            if (double.IsNaN(yawDegrees) || double.IsInfinity(yawDegrees)) throw new ArgumentOutOfRangeException(nameof(yawDegrees));
+            double normalized = ((yawDegrees % 360.0) + 360.0) % 360.0;
+            return (int)Math.Round(normalized / 90.0, MidpointRounding.AwayFromZero) % 4;
+        }
         public static bool EquivalentRotation(string kind, int a, int b) =>
             BrickDefinition.IsKind(kind) && ValidTurns(a) && ValidTurns(b) &&
             (kind == BrickKinds.TwoByTwo || a % 2 == b % 2);

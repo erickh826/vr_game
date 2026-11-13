@@ -120,14 +120,57 @@ namespace BrickBloom.Editor
             return material;
         }
 
-        private static Material HighlightMaterial()
+        // Phase 3 step 2: adds the ghost target renderer to the existing workbench. Snapping itself is code only.
+        public static void ConfigureSnapping()
         {
-            string path = $"{MaterialFolder}/GrabHighlight.mat";
+            try
+            {
+                XRFoundationSetup.RequireEnvironment();
+                var scene = EditorSceneManager.OpenScene(XRFoundationSetup.ScenePath, OpenSceneMode.Single);
+                var workbenches = UnityEngine.Object.FindObjectsByType<BrickWorkbench>(FindObjectsSortMode.None);
+                if (workbenches.Length != 1) throw new InvalidOperationException("Expected exactly 1 BrickWorkbench.");
+                var workbench = workbenches[0];
+                if (workbench.GetComponent<BrickGhostRenderer>() != null)
+                    throw new InvalidOperationException("BrickGhostRenderer already exists. Review/edit it instead of regenerating.");
+
+                string prefabPath = $"{PrefabFolder}/BrickGhost.prefab";
+                if (File.Exists(prefabPath)) throw new InvalidOperationException(prefabPath + " already exists.");
+                var ghostMaterial = TransparentUnlitMaterial("BrickGhost", new Color(1f, 1f, 1f, 0.35f));
+                var ghostObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                ghostObject.name = "BrickGhost";
+                UnityEngine.Object.DestroyImmediate(ghostObject.GetComponent<Collider>());
+                var ghostRenderer = ghostObject.GetComponent<MeshRenderer>();
+                ghostRenderer.sharedMaterial = ghostMaterial;
+                ghostRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                var ghostPrefab = PrefabUtility.SaveAsPrefabAsset(ghostObject, prefabPath);
+                UnityEngine.Object.DestroyImmediate(ghostObject);
+                if (ghostPrefab == null) throw new InvalidOperationException("Failed to save " + prefabPath);
+
+                var ghosts = workbench.gameObject.AddComponent<BrickGhostRenderer>();
+                ghosts.Configure(workbench, ghostPrefab.GetComponent<Renderer>());
+                EditorUtility.SetDirty(ghosts);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, XRFoundationSetup.ScenePath);
+                AssetDatabase.SaveAssets();
+                XRFoundationSetup.CheckScene();
+                Debug.Log("BrickBloom snapping ghosts configured (hardware verification pending).");
+                EditorApplication.Exit(0);
+            }
+            catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
+        private static Material HighlightMaterial() =>
+            TransparentUnlitMaterial("GrabHighlight", new Color(1f, 0.85f, 0.1f, 0.45f));
+
+        private static Material TransparentUnlitMaterial(string name, Color color)
+        {
+            string path = $"{MaterialFolder}/{name}.mat";
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
             if (shader == null) throw new InvalidOperationException("URP Unlit shader missing.");
-            var material = new Material(shader) { name = "GrabHighlight" };
+            var material = new Material(shader) { name = name };
             // Alpha-blended surface. Destination alpha stays opaque over bricks so passthrough does not bleed through them.
             material.SetFloat("_Surface", 1f);
             material.SetFloat("_Blend", 0f);
@@ -139,7 +182,7 @@ namespace BrickBloom.Editor
             material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             material.SetOverrideTag("RenderType", "Transparent");
             material.renderQueue = (int)RenderQueue.Transparent;
-            material.SetColor("_BaseColor", new Color(1f, 0.85f, 0.1f, 0.45f));
+            material.SetColor("_BaseColor", color);
             AssetDatabase.CreateAsset(material, path);
             return material;
         }

@@ -97,6 +97,41 @@ namespace BrickBloom.Tests
             }
         }
 
+        [TestCase(0.0, 0)]
+        [TestCase(44.0, 0)]
+        [TestCase(46.0, 1)]
+        [TestCase(90.0, 1)]
+        [TestCase(134.9, 1)]
+        [TestCase(180.0, 2)]
+        [TestCase(-180.0, 2)]
+        [TestCase(-90.0, 3)]
+        [TestCase(270.0, 3)]
+        [TestCase(316.0, 0)]
+        [TestCase(359.0, 0)]
+        [TestCase(-1.0, 0)]
+        [TestCase(810.0, 1)]
+        public void NearestTurnsRoundsYawToAQuarterTurn(double yaw, int expected)
+        {
+            Assert.That(BrickRules.NearestTurns(yaw), Is.EqualTo(expected));
+            Assert.That(BrickRules.ValidTurns(BrickRules.NearestTurns(yaw)), Is.True);
+        }
+
+        [Test] public void NearestTurnsRejectsNonFiniteYaw()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => BrickRules.NearestTurns(double.NaN));
+            Assert.Throws<ArgumentOutOfRangeException>(() => BrickRules.NearestTurns(double.PositiveInfinity));
+        }
+
+        [Test] public void NearestTurnsAgreesWithBoardPoseRotation()
+        {
+            for (int turns = 0; turns < 4; turns++)
+            {
+                Vector3 forward = BoardPose.ToLocalRotation(turns) * Vector3.forward;
+                double yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+                Assert.That(BrickRules.NearestTurns(yaw), Is.EqualTo(turns));
+            }
+        }
+
         [Test] public void BoardPoseRoundTripsPositionsAndQuarterTurns()
         {
             var point = SnapResolver.Center(new BrickSlot { kind = BrickKinds.TwoByFour, x = 2, y = 1, z = 4, turns = 1 });

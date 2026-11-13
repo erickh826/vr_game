@@ -10,10 +10,10 @@ namespace BrickBloom.XR
 {
     public enum BrickReleaseKind
     {
-        UserRelease,
+        Snapped,
+        Rejected,
         TrackingLost,
         LowConfidence,
-        OutOfReach,
         Cancelled
     }
 
@@ -26,8 +26,6 @@ namespace BrickBloom.XR
         [SerializeField] private Grabbable _grabbable;
         [SerializeField] private HandGrabInteractable _handGrabInteractable;
         [SerializeField] private Rigidbody _rigidbody;
-        [SerializeField] private float _maxReachDistanceMeters = 0.85f;
-        [SerializeField] private float _postReleaseTrackingWatchSeconds = 0.5f;
 
         private HandGrabInteractor _activeInteractor;
         private Handedness _activeHandedness;
@@ -35,9 +33,8 @@ namespace BrickBloom.XR
         private bool _hasActiveHand;
         // The interactable drops its selecting interactor before the Grabbable raises Unselect/Cancel.
         private bool _releasePending;
-        // The runtime usually ends the grab before it reports the hand as lost, so the hand is watched briefly after release.
-        private IHand _releasedHand;
-        private float _releaseWatchUntil;
+        // Placed pieces stop being grabbable; applied on the next Update, outside the SDK's release callbacks.
+        private bool _lockPending;
         private bool _subscribed;
 
         // Raised after the SDK selection has ended and the piece transform is no longer written by the SDK.
@@ -87,18 +84,11 @@ namespace BrickBloom.XR
 
         private void Update()
         {
-            if (_releasedHand == null) return;
-            if (_hasActiveHand || Time.unscaledTime > _releaseWatchUntil)
-            {
-                _releasedHand = null;
-                return;
-            }
-
-            if (!_releasedHand.IsTrackedDataValid || !_releasedHand.IsConnected)
-            {
-                _releasedHand = null;
-                Finish(BrickReleaseKind.TrackingLost, "TrackingLostAfterRelease");
-            }
+            if (!_lockPending) return;
+            _lockPending = false;
+            _handGrabInteractable.enabled = false;
+            var grabInteractable = _handGrabInteractable.GetComponent<GrabInteractable>();
+            if (grabInteractable != null) grabInteractable.enabled = false;
         }
 
         private void OnApplicationPause(bool pauseStatus)
@@ -132,6 +122,7 @@ namespace BrickBloom.XR
                 : GrabTypeFlags.None;
             _hasActiveHand = true;
             _releasePending = false;
+            _piece.SetHeld(true);
         }
 
         private void HandleSelectingInteractorRemoved(IInteractorView interactorView)
@@ -153,7 +144,6 @@ namespace BrickBloom.XR
             switch (evt.Type)
             {
                 case PointerEventType.Select:
-                    _releasedHand = null;
                     EnforceKinematicAndScale();
                     if (_activeInteractor != null && _activeInteractor.HandGrabTarget != null &&
                         _activeInteractor.HandGrabTarget.Anchor != GrabTypeFlags.None)
@@ -200,15 +190,15 @@ namespace BrickBloom.XR
                 // The grab ended because finger poses became unreliable, not because the user let go.
                 Finish(BrickReleaseKind.LowConfidence, "LowConfidenceAtRelease");
             }
-            else if (_piece.DistanceFromTray() > _maxReachDistanceMeters)
+            else if (_piece.Workbench != null && _piece.Workbench.TryPlaceReleased(_piece))
             {
-                Finish(BrickReleaseKind.OutOfReach, "ReleasedOutOfReach");
+                // The SDK selection has ended, so the snap pose just applied is the only transform writer.
+                _lockPending = true;
+                Finish(BrickReleaseKind.Snapped, "UserRelease");
             }
             else
             {
-                _releasedHand = hand;
-                _releaseWatchUntil = Time.unscaledTime + _postReleaseTrackingWatchSeconds;
-                Finish(BrickReleaseKind.UserRelease, "UserRelease");
+                Finish(BrickReleaseKind.Rejected, "UserReleaseWithoutTarget");
             }
         }
 
@@ -216,13 +206,10 @@ namespace BrickBloom.XR
         {
             EnforceKinematicAndScale();
             Vector3 releasedAt = transform.localPosition;
-            if (kind != BrickReleaseKind.UserRelease)
-            {
-                _releasedHand = null;
-                _piece.ReturnToTray();
-            }
+            // Every ending except a committed snap puts the piece back in the supply area.
+            if (kind != BrickReleaseKind.Snapped) _piece.ReturnToTray();
 
-            Debug.Log($"[BrickBloom Piece] Release | piece={_piece.PieceId} | kind={kind} | reason={reason} | localPos=({releasedAt.x:F3},{releasedAt.y:F3},{releasedAt.z:F3})");
+            Debug.Log($"[BrickBloom Piece] Release | piece={_piece.PieceId} | kind={kind} | reason={reason} | finalLocalPos=({releasedAt.x:F3},{releasedAt.y:F3},{releasedAt.z:F3})");
             Released?.Invoke(_piece, kind);
         }
 
@@ -232,6 +219,7 @@ namespace BrickBloom.XR
             _activeGrabType = GrabTypeFlags.None;
             _hasActiveHand = false;
             _releasePending = false;
+            _piece.SetHeld(false);
         }
 
         private void EnforceKinematicAndScale()

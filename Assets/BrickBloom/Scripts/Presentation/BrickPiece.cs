@@ -16,6 +16,10 @@ namespace BrickBloom.Presentation
         public string Kind { get; private set; }
         public string Color { get; private set; }
         public bool IsInitialized { get; private set; }
+        public bool IsPlaced { get; private set; }
+        // Set by the grab adapter while a hand owns the transform; read-only input for previews.
+        public bool IsHeld { get; private set; }
+        public BrickWorkbench Workbench { get; private set; }
         public Vector3 TrayLocalPosition => _trayLocalPosition;
 
         // Editor-time wiring of prefab references.
@@ -25,9 +29,10 @@ namespace BrickBloom.Presentation
             _rigidbody = body;
         }
 
-        public void Initialize(string pieceId, string kind, string color, Material material,
+        public void Initialize(BrickWorkbench workbench, string pieceId, string kind, string color, Material material,
             Vector3 trayLocalPosition, Quaternion trayLocalRotation)
         {
+            Workbench = workbench;
             PieceId = pieceId;
             Kind = kind;
             Color = color;
@@ -46,13 +51,29 @@ namespace BrickBloom.Presentation
             ReturnToTray();
         }
 
+        public void SetHeld(bool held) => IsHeld = held && !IsPlaced;
+
         public float DistanceFromTray() => Vector3.Distance(transform.localPosition, _trayLocalPosition);
 
         // Caller must have released any XR selection first; this is the InTray transform writer.
         public void ReturnToTray()
         {
-            transform.localPosition = _trayLocalPosition;
-            transform.localRotation = _trayLocalRotation;
+            if (IsPlaced) return;
+            ApplyLocalPose(_trayLocalPosition, _trayLocalRotation);
+        }
+
+        // Placed transform writer: exact board-local centre and canonical rotation from the committed slot.
+        public void PlaceAt(Vector3 boardLocalPosition, Quaternion boardLocalRotation)
+        {
+            IsPlaced = true;
+            IsHeld = false;
+            ApplyLocalPose(boardLocalPosition, boardLocalRotation);
+        }
+
+        private void ApplyLocalPose(Vector3 localPosition, Quaternion localRotation)
+        {
+            transform.localPosition = localPosition;
+            transform.localRotation = localRotation;
             transform.localScale = Vector3.one;
             if (_rigidbody != null)
             {

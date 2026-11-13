@@ -438,11 +438,22 @@ namespace BrickBloom.Editor
                     warnings = report.summary.totalWarnings, bytes = report.summary.totalSize,
                     seconds = report.summary.totalTime.TotalSeconds, hardwareVerified = false
                 }, true) + "\n";
-                File.WriteAllText("docs/validation/gate-b-build.json", evidenceJson);
+                File.WriteAllText("docs/validation/" + BuildEvidenceFileName(), evidenceJson);
                 Debug.Log("BrickBloom APK build: " + report.summary.result);
                 EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
             }
             catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
+        // Optional "-brickbloomBuildEvidence <file>.json" names the evidence file so earlier gate records are not overwritten.
+        private static string BuildEvidenceFileName()
+        {
+            var args = Environment.GetCommandLineArgs();
+            int index = Array.IndexOf(args, "-brickbloomBuildEvidence");
+            string name = index >= 0 && index + 1 < args.Length ? args[index + 1] : "build-latest.json";
+            if (name != Path.GetFileName(name) || !name.EndsWith(".json", StringComparison.Ordinal))
+                throw new InvalidOperationException("Invalid build evidence file name: " + name);
+            return name;
         }
 
         internal static void RequireEnvironment()
