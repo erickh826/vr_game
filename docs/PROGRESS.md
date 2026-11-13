@@ -169,3 +169,27 @@ User accepted Gate B after reviewing the log findings above. Recorded in docs/va
 How to grab, as established on hardware: bring the fingertips to the cube until it turns yellow (about 8–11 cm from its centre), then close thumb and index (pinch) or curl middle and ring fingers around it (palm); it turns green while held. There is no distance grab. After launch or resume wait for hand tracking (up to about 12 s observed). Picking up a controller while holding returns the cube to the tray.
 
 Commit scope: Gate B implementation and this session's changes only (XRFoundationSetup.cs, XRFoundation.unity, ComprehensiveInteractors prefab, Assets/BrickBloom/XR scripts, gate-b build/hardware JSON, PROGRESS.md). Left uncommitted as before: URP global settings, Graphics/Project/ShaderGraph/URPProject settings, TutorialInfo URP.png, android-meta/android-xr JSON, OVRBuildConfig, StreamingAssets.meta, SceneTemplateSettings.json. Not pushed.
+
+## 2026-11-13 — Phase 3 step 1: blueprint-driven brick workbench (hardware test pending)
+
+Branch feature/offline-brick-workbench from the Gate B commit 9b24644.
+
+- Assets: Kenney Brick Kit 1.0 (CC0) bevel-hq-brick-2x2, bevel-hq-brick-2x4 and bevel-hq-plate-4x8 FBX copied to Assets/BrickBloom/Models/Kenney with the licence text. Models are visuals only. Measured at import and fitted by the setup tool: scale 0.3019, 2x2 footprint 0.0480 x 0.0477 m, 2x4 0.0477 x 0.0960 m, body bottom at -0.0145 m (half the 0.029 m layer), stud tops 0.0054 m above the body; two plates form the 8x8 board with the plate top at Y = 0.
+- Core (no engine reference): SupplyLayout gives deterministic supply positions beside the board in the board-local frame.
+- New BrickBloom.Presentation assembly (Unity, no Meta): BlueprintLoader (malformed JSON and validation failures reported, never thrown), BoardPose conversions, BrickPiece (identity and supply pose), BrickWorkbench (loads bridge-001, creates the BrickBoard, registers and spawns one physical piece per slot in bottom-up order), WorkbenchPlacer (places the workbench 0.42 m ahead of and 0.42 m below the head once tracking is valid, minimum height 0.55 m).
+- Meta adapter (Assets/BrickBloom/XR): BrickGrabAdapter per piece reuses the Gate B release ordering and returns the piece to supply on tracking loss, low finger confidence, out-of-reach release, pointer cancel, pause or focus loss; raises Released(piece, kind) for the snap step. GrabStateColorFeedback gained a highlight-shell mode (translucent box, yellow in range, green held) because tinting is invisible on yellow and white bricks.
+- Editor: BrickWorkbenchSetup.Configure (batch entry) creates Simple Lit colour materials, the transparent highlight material, BrickPiece_2x2/2x4 prefabs (padded BoxCollider separate from the mesh, kinematic Rigidbody, SDK grab components, one grab point, no two-hand transformer) and adds BrickWorkbench, BoardOrigin, BoardVisual and a shadowless KeyLight to XRFoundation; flat ambient light. The Gate B cube's WorkbenchRoot is kept but inactive; CheckScene now locates the cube including inactive objects.
+- Not in this step: snapping on release, ghost targets, rotate button, HUD, reset. Released pieces stay where the user lets go.
+
+Evidence: Edit Mode 60/60 passed, 0 failed/skipped (47 existing + 13 new; Logs/brickbloom-workbench-editmode.xml). Batch configure succeeded with preflight passed. Android build succeeded; APK 90,185,806 bytes, SHA256 c34d80a7df24656c4fc28be4b2eed5f7d30658b3dd7b010d2f719dd408a352b6, installed with adb install -r, installed hash verified equal. Build record saved as docs/validation/workbench-step1-build.json; BuildApk still writes to gate-b-build.json, which was restored to its committed Gate B content (the output name should be parameterised). Nothing verified on the headset yet. Not committed.
+
+## 2026-11-13 — Step 1 workbench observed on headset (user performed)
+
+APK c34d80a7…, log Logs/brickbloom-workbench-step1.log (18:56–18:58). 0 Unity errors/exceptions.
+
+- Workbench: Ready with blueprint bridge-001, 6 slots, 6 pieces; placed 0.68 s later at (0.121,0.797,0.336) for a head at (0.036,1.217,-0.075), i.e. 0.42 m below eye height. User: reachable, slightly low but acceptable.
+- Visuals (user report): size fine, no broken or missing materials; translucent highlight and green held state seen on every piece.
+- Grabs: all six pieces selected (18 Select, right-hand pinch only), 20 Hover events, 17 UserRelease, 1 TrackingLostDuringGrab which returned the piece to supply (user confirms the return when touching a controller).
+- User observation: bricks pass through each other. Expected in this step: pieces are kinematic and nothing resolves piece-to-piece contact; the specification makes snapping, not physics, decide placement.
+
+Not covered here: left hand and palm on brick pieces, pause/resume with pieces, low-confidence release on pieces. Not committed.

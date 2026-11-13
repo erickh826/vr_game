@@ -445,7 +445,7 @@ namespace BrickBloom.Editor
             catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
         }
 
-        private static void RequireEnvironment()
+        internal static void RequireEnvironment()
         {
             if (!Application.isBatchMode || Application.unityVersion != "6000.0.85f1" ||
                 EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
@@ -454,7 +454,7 @@ namespace BrickBloom.Editor
                 throw new InvalidOperationException("Activate QuestDevelopment using AndroidXRSetup first.");
         }
 
-        private static void CheckScene()
+        internal static void CheckScene()
         {
             var rigs = UnityEngine.Object.FindObjectsByType<OVRCameraRig>(FindObjectsSortMode.None);
             var layers = UnityEngine.Object.FindObjectsByType<OVRPassthroughLayer>(FindObjectsSortMode.None);
@@ -471,7 +471,9 @@ namespace BrickBloom.Editor
 
             var rigRefs = UnityEngine.Object.FindObjectsByType<OVRCameraRigRef>(FindObjectsSortMode.None);
             var handGrabInteractors = UnityEngine.Object.FindObjectsByType<HandGrabInteractor>(FindObjectsSortMode.None);
-            var cubeRoot = GameObject.Find("CubeRoot");
+            // The Gate B cube is kept but may be inactive once the brick workbench replaces it.
+            var cubeDiagnostics = UnityEngine.Object.FindObjectsByType<GateBCubeDiagnostics>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var cubeRoot = cubeDiagnostics.Length == 1 ? cubeDiagnostics[0].gameObject : null;
             if (rigRefs.Length != 1 || rigRefs[0].transform.parent != rigs[0].transform ||
                 !File.Exists(ComprehensiveInteractorsPath) || handGrabInteractors.Length < 2 || cubeRoot == null)
                 throw new InvalidOperationException("Gate B interaction rig or CubeRoot preflight failed.");

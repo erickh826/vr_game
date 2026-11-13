@@ -1,7 +1,8 @@
 {
   "name": "BrickBloom.EditModeTests",
   "references": [
-    "BrickBloom.Core"
+    "BrickBloom.Core",
+    "BrickBloom.Presentation"
   ],
   "includePlatforms": [
     "Editor"

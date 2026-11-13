@@ -15,6 +15,8 @@ namespace BrickBloom.XR
         [SerializeField] private Renderer _renderer;
         [SerializeField] private Color _hoverColor = new Color(1f, 0.85f, 0.1f, 1f);
         [SerializeField] private Color _selectColor = new Color(0.2f, 0.9f, 0.3f, 1f);
+        // For a dedicated highlight shell: show it only while hovered or selected.
+        [SerializeField] private bool _hideRendererWhenIdle;
 
         private MaterialPropertyBlock _block;
         private bool _subscribed;
@@ -23,6 +25,13 @@ namespace BrickBloom.XR
         {
             _interactable = interactable;
             _renderer = targetRenderer;
+        }
+
+        public void ConfigureHighlightShell(Color hoverColor, Color selectColor)
+        {
+            _hoverColor = hoverColor;
+            _selectColor = selectColor;
+            _hideRendererWhenIdle = true;
         }
 
         private void OnEnable()
@@ -51,6 +60,7 @@ namespace BrickBloom.XR
             if (_renderer != null)
             {
                 _renderer.SetPropertyBlock(null);
+                if (_hideRendererWhenIdle) _renderer.enabled = false;
             }
         }
 
@@ -72,6 +82,7 @@ namespace BrickBloom.XR
                 default:
                     // Normal/Disabled: fall back to the colour of the material itself.
                     _renderer.SetPropertyBlock(null);
+                    if (_hideRendererWhenIdle) _renderer.enabled = false;
                     break;
             }
         }
@@ -80,6 +91,7 @@ namespace BrickBloom.XR
         {
             _block.SetColor(BaseColorId, color);
             _renderer.SetPropertyBlock(_block);
+            if (_hideRendererWhenIdle) _renderer.enabled = true;
         }
     }
 }

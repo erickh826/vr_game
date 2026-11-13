@@ -1,0 +1,7 @@
+{
+  "name": "BrickBloom.Presentation",
+  "rootNamespace": "BrickBloom.Presentation",
+  "references": [
+    "BrickBloom.Core"
+  ]
+}
