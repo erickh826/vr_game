@@ -1,7 +1,13 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using BrickBloom.XR;
 using Meta.XR;
+using Oculus.Interaction;
+using Oculus.Interaction.Grab;
+using Oculus.Interaction.HandGrab;
+using Oculus.Interaction.Input;
 using UnityEditor;
 using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
@@ -17,6 +23,8 @@ namespace BrickBloom.Editor
     public static class XRFoundationSetup
     {
         public const string ScenePath = "Assets/BrickBloom/Scenes/XRFoundation.unity";
+        public const string ComprehensiveInteractorsPath = "Assets/BrickBloom/Prefabs/XR/ComprehensiveInteractors.prefab";
+        private const string ComprehensiveInteractorsRelativePrefabPath = "BrickBloom/Prefabs/XR/ComprehensiveInteractors.prefab";
         private const string PipelinePath = "Assets/BrickBloom/Settings/Quest_RPAsset.asset";
         private const string RendererPath = "Assets/BrickBloom/Settings/Quest_Renderer.asset";
         private const string ProfilePath = "Assets/BrickBloom/BuildProfiles/QuestDevelopment.asset";
@@ -123,6 +131,261 @@ namespace BrickBloom.Editor
             catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
         }
 
+        public static void ConfigureGateBAndValidate()
+        {
+            try
+            {
+                RequireEnvironment();
+                var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+                var rigs = UnityEngine.Object.FindObjectsByType<OVRCameraRig>(FindObjectsSortMode.None);
+                if (rigs.Length != 1)
+                {
+                    throw new InvalidOperationException($"Expected exactly 1 OVRCameraRig in {ScenePath}, found {rigs.Length}.");
+                }
+
+                var cameraRig = rigs[0];
+                Folder("Assets/BrickBloom/Prefabs/XR");
+
+                var rigRef = UnityEngine.Object.FindFirstObjectByType<OVRCameraRigRef>();
+                if (rigRef == null)
+                {
+                    var wizardType = Type.GetType(
+                        "Oculus.Interaction.OVR.Editor.QuickActions.OVRComprehensiveInteractionRigWizard, Oculus.Interaction.OVR.Editor",
+                        throwOnError: true);
+                    var wizard = ScriptableObject.CreateInstance(wizardType);
+                    try
+                    {
+                        wizardType.GetMethod("InjectCameraRig", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                            .Invoke(wizard, new object[] { cameraRig });
+                        wizardType.GetMethod("InjectOptionalGenerateAsEditableCopy", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                            .Invoke(wizard, new object[] { true });
+                        wizardType.GetMethod("InjectOptionalPrefabPath", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                            .Invoke(wizard, new object[] { ComprehensiveInteractorsRelativePrefabPath });
+                        wizardType.GetMethod("CreateInteractionRig", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                            .Invoke(wizard, Array.Empty<object>());
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.DestroyImmediate(wizard);
+                    }
+
+                    rigRef = UnityEngine.Object.FindFirstObjectByType<OVRCameraRigRef>();
+                }
+
+                if (rigRef == null)
+                {
+                    throw new InvalidOperationException("Failed to create or locate OVRCameraRigRef under QuestCameraRig.");
+                }
+
+                WireInteractionRig(cameraRig, rigRef);
+
+                var cubeRoot = GameObject.Find("CubeRoot");
+                if (cubeRoot == null)
+                {
+                    throw new InvalidOperationException("CubeRoot missing from XRFoundation scene.");
+                }
+
+                ConfigureGrabbableCube(cubeRoot);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, ScenePath);
+                AssetDatabase.SaveAssets();
+                CreateManifestIfMissing();
+                CheckScene();
+                AndroidXRSetup.ValidateOnly();
+            }
+            catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
+        private static void WireInteractionRig(OVRCameraRig cameraRig, OVRCameraRigRef rigRef)
+        {
+            var hands = rigRef.GetComponentsInChildren<OVRHand>(true);
+            var leftHand = hands.FirstOrDefault(h => h.GetHand() == OVRPlugin.Hand.HandLeft);
+            var rightHand = hands.FirstOrDefault(h => h.GetHand() == OVRPlugin.Hand.HandRight);
+            if (leftHand == null || rightHand == null)
+            {
+                throw new InvalidOperationException("Expected left and right OVRHand components under OVRComprehensiveInteractionRig.");
+            }
+
+            var rigRefSerialized = new SerializedObject(rigRef);
+            rigRefSerialized.FindProperty("_ovrCameraRig").objectReferenceValue = cameraRig;
+            rigRefSerialized.FindProperty("_leftHand").objectReferenceValue = leftHand;
+            rigRefSerialized.FindProperty("_rightHand").objectReferenceValue = rightHand;
+            rigRefSerialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(rigRef);
+
+            var transformer = rigRef.GetComponent<MonoBehaviour>();
+            foreach (var mb in rigRef.GetComponents<MonoBehaviour>())
+            {
+                if (mb is ITrackingToWorldTransformer)
+                {
+                    transformer = mb;
+                    break;
+                }
+            }
+
+            foreach (var handSource in rigRef.GetComponentsInChildren<FromOVRHandDataSource>(true))
+            {
+                var hsSerialized = new SerializedObject(handSource);
+                hsSerialized.FindProperty("_cameraRigRef").objectReferenceValue = rigRef;
+                hsSerialized.FindProperty("_trackingToWorldTransformer").objectReferenceValue = transformer;
+                hsSerialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(handSource);
+            }
+
+            foreach (var controllerSource in rigRef.GetComponentsInChildren<FromOVRControllerDataSource>(true))
+            {
+                var csSerialized = new SerializedObject(controllerSource);
+                csSerialized.FindProperty("_cameraRigRef").objectReferenceValue = rigRef;
+                csSerialized.FindProperty("_trackingToWorldTransformer").objectReferenceValue = transformer;
+                csSerialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(controllerSource);
+            }
+        }
+
+        private static void ConfigureGrabbableCube(GameObject cubeRoot)
+        {
+            cubeRoot.transform.localPosition = Vector3.zero;
+            cubeRoot.transform.localRotation = Quaternion.identity;
+            cubeRoot.transform.localScale = Vector3.one;
+
+            var collider = cubeRoot.GetComponent<BoxCollider>();
+            if (collider == null)
+            {
+                collider = cubeRoot.AddComponent<BoxCollider>();
+            }
+            collider.size = Vector3.one * 0.08f;
+            collider.center = Vector3.zero;
+            collider.isTrigger = false;
+            EditorUtility.SetDirty(collider);
+
+            var body = cubeRoot.GetComponent<Rigidbody>();
+            if (body == null)
+            {
+                body = cubeRoot.AddComponent<Rigidbody>();
+            }
+            body.useGravity = false;
+            body.isKinematic = true;
+            body.interpolation = RigidbodyInterpolation.None;
+            body.collisionDetectionMode = CollisionDetectionMode.Discrete;
+            EditorUtility.SetDirty(body);
+
+            var handGrabInteractable = cubeRoot.GetComponentInChildren<HandGrabInteractable>(true);
+            if (handGrabInteractable == null)
+            {
+                Oculus.Interaction.Editor.QuickActions.QuickActionsAPI.AddGrabInteraction(cubeRoot);
+                handGrabInteractable = cubeRoot.GetComponentInChildren<HandGrabInteractable>(true);
+            }
+
+            if (handGrabInteractable == null)
+            {
+                throw new InvalidOperationException("Failed to create HandGrabInteractable under CubeRoot.");
+            }
+
+            var grabbable = cubeRoot.GetComponent<Grabbable>();
+            if (grabbable == null)
+            {
+                throw new InvalidOperationException("Expected Grabbable on CubeRoot.");
+            }
+
+            var freeTransformer = cubeRoot.GetComponent<GrabFreeTransformer>();
+            if (freeTransformer == null)
+            {
+                freeTransformer = cubeRoot.AddComponent<GrabFreeTransformer>();
+            }
+            EditorUtility.SetDirty(freeTransformer);
+
+            grabbable.InjectOptionalTargetTransform(cubeRoot.transform);
+            grabbable.InjectOptionalRigidbody(body);
+            grabbable.InjectOptionalKinematicWhileSelected(true);
+            grabbable.InjectOptionalThrowWhenUnselected(false);
+            grabbable.ForceKinematicDisabled = false;
+            grabbable.MaxGrabPoints = 1;
+            grabbable.InjectOptionalOneGrabTransformer(freeTransformer);
+            grabbable.InjectOptionalTwoGrabTransformer(null);
+            EditorUtility.SetDirty(grabbable);
+
+            handGrabInteractable.InjectRigidbody(body);
+            handGrabInteractable.InjectOptionalPointableElement(grabbable);
+            handGrabInteractable.InjectSupportedGrabTypes(GrabTypeFlags.Pinch | GrabTypeFlags.Palm);
+            handGrabInteractable.MaxSelectingInteractors = 1;
+            handGrabInteractable.ResetGrabOnGrabsUpdated = true;
+            EditorUtility.SetDirty(handGrabInteractable);
+
+            var grabInteractable = handGrabInteractable.GetComponent<GrabInteractable>();
+            if (grabInteractable != null)
+            {
+                grabInteractable.InjectRigidbody(body);
+                grabInteractable.InjectOptionalPointableElement(grabbable);
+                grabInteractable.MaxSelectingInteractors = 1;
+                grabInteractable.ResetGrabOnGrabsUpdated = true;
+                EditorUtility.SetDirty(grabInteractable);
+            }
+
+            var diagnostics = cubeRoot.GetComponent<GateBCubeDiagnostics>();
+            if (diagnostics == null)
+            {
+                diagnostics = cubeRoot.AddComponent<GateBCubeDiagnostics>();
+            }
+            diagnostics.Configure(
+                grabbable,
+                handGrabInteractable,
+                body,
+                Vector3.zero,
+                Quaternion.identity,
+                Vector3.one);
+            EditorUtility.SetDirty(diagnostics);
+
+            ConfigureGrabFeedback(cubeRoot, handGrabInteractable);
+        }
+
+        private static void ConfigureGrabFeedback(GameObject cubeRoot, HandGrabInteractable handGrabInteractable)
+        {
+            var visual = cubeRoot.transform.Find("Visual");
+            var visualRenderer = visual != null ? visual.GetComponent<Renderer>() : null;
+            if (visualRenderer == null)
+            {
+                throw new InvalidOperationException("CubeRoot/Visual renderer missing; cannot configure grab colour feedback.");
+            }
+
+            var feedback = cubeRoot.GetComponent<GrabStateColorFeedback>();
+            if (feedback == null)
+            {
+                feedback = cubeRoot.AddComponent<GrabStateColorFeedback>();
+            }
+            feedback.Configure(handGrabInteractable, visualRenderer);
+            EditorUtility.SetDirty(feedback);
+        }
+
+        // Narrow entry point: only adds/configures the grab colour feedback on the existing CubeRoot.
+        public static void ConfigureGateBFeedback()
+        {
+            try
+            {
+                RequireEnvironment();
+                var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+                var cubeRoot = GameObject.Find("CubeRoot");
+                if (cubeRoot == null)
+                {
+                    throw new InvalidOperationException("CubeRoot missing from XRFoundation scene.");
+                }
+
+                var handGrabInteractable = cubeRoot.GetComponentInChildren<HandGrabInteractable>(true);
+                if (handGrabInteractable == null)
+                {
+                    throw new InvalidOperationException("HandGrabInteractable missing under CubeRoot.");
+                }
+
+                ConfigureGrabFeedback(cubeRoot, handGrabInteractable);
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, ScenePath);
+                AssetDatabase.SaveAssets();
+                CheckScene();
+                EditorApplication.Exit(0);
+            }
+            catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
         public static void CreateManifestAndValidate()
         {
             try
@@ -168,13 +431,14 @@ namespace BrickBloom.Editor
                     locationPathName = ApkPath, options = BuildOptions.Development
                 });
                 Directory.CreateDirectory("docs/validation");
-                File.WriteAllText("docs/validation/gate-a-build.json", JsonUtility.ToJson(new BuildEvidence
+                var evidenceJson = JsonUtility.ToJson(new BuildEvidence
                 {
                     generatedUtc = DateTime.UtcNow.ToString("O"), result = report.summary.result.ToString(),
                     outputPath = ApkPath, scene = ScenePath, errors = report.summary.totalErrors,
                     warnings = report.summary.totalWarnings, bytes = report.summary.totalSize,
                     seconds = report.summary.totalTime.TotalSeconds, hardwareVerified = false
-                }, true) + "\n");
+                }, true) + "\n";
+                File.WriteAllText("docs/validation/gate-b-build.json", evidenceJson);
                 Debug.Log("BrickBloom APK build: " + report.summary.result);
                 EditorApplication.Exit(report.summary.result == BuildResult.Succeeded ? 0 : 1);
             }
@@ -204,7 +468,39 @@ namespace BrickBloom.Editor
                 pipeline == null || pipeline.supportsHDR || pipeline.msaaSampleCount != 4 || pipeline.renderScale != 1f ||
                 !profile.overrideGlobalScenes || !profile.scenes.Where(s => s.enabled).Select(s => s.path).SequenceEqual(new[] { ScenePath }))
                 throw new InvalidOperationException("Gate A scene/render/profile preflight failed.");
-            Debug.Log("BrickBloom Gate A scene/render/profile preflight passed (hardware verification pending).");
+
+            var rigRefs = UnityEngine.Object.FindObjectsByType<OVRCameraRigRef>(FindObjectsSortMode.None);
+            var handGrabInteractors = UnityEngine.Object.FindObjectsByType<HandGrabInteractor>(FindObjectsSortMode.None);
+            var cubeRoot = GameObject.Find("CubeRoot");
+            if (rigRefs.Length != 1 || rigRefs[0].transform.parent != rigs[0].transform ||
+                !File.Exists(ComprehensiveInteractorsPath) || handGrabInteractors.Length < 2 || cubeRoot == null)
+                throw new InvalidOperationException("Gate B interaction rig or CubeRoot preflight failed.");
+
+            var body = cubeRoot.GetComponent<Rigidbody>();
+            var collider = cubeRoot.GetComponent<BoxCollider>();
+            var grabbable = cubeRoot.GetComponent<Grabbable>();
+            var freeTransformer = cubeRoot.GetComponent<GrabFreeTransformer>();
+            var handGrabInteractable = cubeRoot.GetComponentInChildren<HandGrabInteractable>(true);
+            var diagnostics = cubeRoot.GetComponent<GateBCubeDiagnostics>();
+            if (cubeRoot.transform.localScale != Vector3.one ||
+                body == null || body.useGravity || !body.isKinematic ||
+                collider == null || collider.isTrigger || collider.size != Vector3.one * 0.08f ||
+                grabbable == null || grabbable.MaxGrabPoints != 1 || grabbable.ForceKinematicDisabled ||
+                freeTransformer == null || handGrabInteractable == null ||
+                handGrabInteractable.MaxSelectingInteractors != 1 ||
+                handGrabInteractable.SupportedGrabTypes != (GrabTypeFlags.Pinch | GrabTypeFlags.Palm) ||
+                !handGrabInteractable.ResetGrabOnGrabsUpdated ||
+                diagnostics == null || cubeRoot.GetComponent<GrabStateColorFeedback>() == null)
+                throw new InvalidOperationException("Gate B CubeRoot grab configuration preflight failed.");
+
+            var grabbableSerialized = new SerializedObject(grabbable);
+            if (!grabbableSerialized.FindProperty("_kinematicWhileSelected").boolValue ||
+                grabbableSerialized.FindProperty("_throwWhenUnselected").boolValue ||
+                grabbableSerialized.FindProperty("_oneGrabTransformer").objectReferenceValue != freeTransformer ||
+                grabbableSerialized.FindProperty("_twoGrabTransformer").objectReferenceValue != null)
+                throw new InvalidOperationException("Gate B Grabbable serialized properties preflight failed.");
+
+            Debug.Log("BrickBloom Gate A + Gate B scene/render/profile/interaction preflight passed (Gate B hardware verification pending).");
         }
 
         private static void Folder(string path)

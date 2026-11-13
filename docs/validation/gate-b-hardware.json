@@ -1,0 +1,42 @@
+{
+  "gate": "B",
+  "status": "passed",
+  "reportedDate": "2026-11-13",
+  "timezone": "Asia/Hong_Kong",
+  "device": "Meta Quest 3",
+  "evidenceSource": "user_performed_test_with_adb_logcat_capture",
+  "acceptanceDecision": "user accepted in chat after reviewing the log findings",
+  "agentPerformedHardwareTest": false,
+  "installedApkSha256": "e29161838e211f8595bf924ccb709cef63d2bf39c57d7aa180239941524175c8",
+  "installedHashMatchesLocalBuild": true,
+  "checks": {
+    "grabReleaseCyclesPerHand": "passed (21 left, 23 right counted cycles on build 5545fef7, 2026-11-13 15:44-15:53)",
+    "pinchGrabBothHands": "passed",
+    "palmGrabBothHands": "passed (7 left, 3 right on final build; 2 per hand earlier)",
+    "kinematicNoScaleChange": "passed (localScale 1,1,1 on every logged release)",
+    "hoverColourFeedback": "passed (user saw yellow in range; Hover logged before every grab)",
+    "selectColourFeedback": "not separately confirmed by user",
+    "lowConfidenceReleaseRecovery": "observed once (hand held behind the user), no false reset in 30+ normal releases",
+    "trackingLostRecovery": "passed (3 resets when the runtime switched the holding hand to a controller)",
+    "pauseResumeRecovery": "passed (grabs work again after resume)",
+    "relaunchRecovery": "passed (cube at tray pose, grab succeeded)",
+    "focusLossWhileStillHolding": "not evidenced (tracking-lost recovery released the cube first)"
+  },
+  "usageNotes": [
+    "Near hand grab only: fingertips must be within roughly 0.08-0.11 m of the cube centre before a pinch or palm grab registers.",
+    "After launch or resume, grabbing is unavailable until hand tracking is reported (measured 0.1-12 s).",
+    "Hiding the hand does not produce a tracking-lost flag on Quest 3; the pose freezes, finger confidence drops and the pinch is released."
+  ],
+  "knownOpenItems": [
+    "Select count was one lower than Unselect plus resets in the 15:44 run; unexplained.",
+    "Frequent HMDMounted/HMDUnmounted flips and a FirstPersonLocomotor ground warning at startup; not investigated.",
+    "Edit Mode tests were not rerun for these XR-only changes."
+  ],
+  "logPaths": [
+    "Logs/brickbloom-gateb-cycles.log",
+    "Logs/brickbloom-gateb-regrab.log",
+    "Logs/brickbloom-gateb-feedback.log",
+    "Logs/brickbloom-gateb-feedback-2.log"
+  ],
+  "headsetOs": null
+}

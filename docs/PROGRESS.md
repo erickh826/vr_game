@@ -75,3 +75,97 @@ Next is Gate B: attach the verified SDK interaction rig to the existing camera r
 User could see the blue cube but could not move it. Read-only ADB inspection proved the installed base.apk SHA256 matched the Gate A artifact exactly, not the newer locally built Gate B APK. Installed the existing Gate B APK with adb install -r (Success), launched UnityPlayerGameActivity, and verified installed SHA256 equals the local APK. Device log confirms passthrough initialization and Gate B lifecycle diagnostics; no NullReferenceException/AssertionException/MissingReferenceException was found in the captured startup window. The last captured state was paused/unfocused with zero completed grab cycles; this does not establish grab functionality. User should wear/resume the headset and attempt near pinch/palm grabbing. Gate B hardware acceptance remains pending.
 
 Deployment evidence: docs/validation/gate-b-deployment.json; raw device log is ignored under Logs/. No code, scene, packages or settings changed and no rebuild/tests were needed for this deployment correction. Existing uncommitted Gate B implementation and other user/build changes were preserved.
+
+## 2026-11-13 — Gate B "cannot grab" investigation (in progress)
+
+User reports the blue cube is visible but cannot be picked up by hand. Read-only ADB check: installed base.apk SHA256 8d7103e7…2fc027 equals the local Builds/Quest APK (diagnostics build of 2026-11-03 18:34, installed on device 2026-11-13 13:45), so this is not another stale-deployment case. Static review of XRFoundation.unity found no wiring defect: CubeRoot has kinematic Rigidbody, non-trigger 8 cm BoxCollider, Grabbable (one-grab free transformer, max 1 grab point), child HandGrabInteractable (Pinch|Palm, rigidbody and pointable element assigned); OVRCameraRigRef, hand refs and tracking-to-world transformer are assigned on hand/controller data sources; the only scene-disabled interactor objects are controller locomotion ones; hand skeleton version is OpenXR. The cube has near hand-grab only (no distance/ray grab).
+
+Unattended relaunch through ADB with the proximity sensor overridden reached XR session VISIBLE but the app was paused by the system Guardian dialog before the scene's first frame, so no GateB Startup/Tracking diagnostics were produced; proximity override was restored afterwards. No conclusion on bug versus operation yet: it needs a worn-headset run with the log capture (Logs/brickbloom-gateb-live-grab.log, ignored). No code, scene, package or settings changes; no rebuild or tests run.
+
+Worn-headset run 2026-11-13 15:29–15:31 (user performed; Logs/brickbloom-gateb-live-grab.log): Startup reported 4 HandGrabInteractors, cube at world (0, 0.78, 0.55), interactable active; no Unity errors or exceptions. Both hands were tracked with valid poses on the two active interactors. Across 35 two-second samples the closest wrist-to-cube distance was 0.434 m (right) and 0.549 m (left); wrist Z never exceeded 0.184 m against the cube's 0.55 m. grabbing=False throughout, no Select/Unselect events, 0 cycles. So no grab was attempted within near-grab range in this run: the failure is consistent with the hands not reaching the cube (only near hand-grab is configured), and grab behaviour at contact range remains untested. Limits: 2 s sampling can miss brief reaches; head pose and fingertip distance are not logged, so a hand-space versus render-space offset is not excluded. Gate B hardware acceptance still pending. No code/scene changes.
+
+## 2026-11-13 — Gate B grab confirmed working; cause was operation, not a bug
+
+User retried and reports the cube can be picked up: the hand must be at the cube and the fingers must actually close (pinch thumb+index, or close the hand) — hovering or touching with an open hand does nothing, and there is no distance grab. Device log (Logs/brickbloom-gateb-live-grab.log, 15:33:16–15:33:45) corroborates: 6 Select/Unselect pairs, all hand=Left grabType=Pinch, cube moved with the hand and stayed where released, scale stayed 1, 0 RecoveryReset, 0 Unity errors/exceptions. The earlier "cannot grab" report is therefore explained by reach/gesture, with no defect found in the grab wiring.
+
+Not yet covered, so Gate B acceptance stays pending: right-hand grabs, palm grabs, 20 cycles per hand, tracking loss, system menu/resume and relaunch recovery.
+
+Diagnostics defect found (not fixed): every Unselect logged hand=Unknown/grabType=None and leftCycles/rightCycles stayed 0 despite 6 completed cycles. GateBCubeDiagnostics clears the active hand in HandleSelectingInteractorRemoved before the Grabbable's Unselect pointer event is handled, so the cycle counters never increment. The counters cannot be used as acceptance evidence until this ordering is fixed; count Select/Unselect log lines instead. Usability note: the cube is fixed 0.55 m in front of the Stage origin at 0.78 m height, so the user has to walk to it. No code, scene, package or settings changes; no rebuild or tests run.
+
+## 2026-11-13 — Fixed Gate B cycle counter ordering; rebuilt and installed
+
+GateBCubeDiagnostics no longer clears the active hand when the interactable drops its selecting interactor; it marks the release pending and clears after the Grabbable's Unselect/Cancel pointer event has been logged and counted. Pause/focus/disable recovery checks use the held state (active and not release-pending). A forced release during pause/focus loss is treated as recovery and is not counted as a completed cycle. Only Assets/BrickBloom/XR/GateBCubeDiagnostics.cs changed; no BrickBloom.Core rule change, so no new NUnit test, and Edit Mode tests were not rerun.
+
+Evidence: batch-mode Android build via XRFoundationSetup.BuildApk succeeded (C# compiled, preflight passed, 0 errors, 4 warnings, 115.8 s; Logs/brickbloom-gateb-cyclefix-build.log). APK 93,918,531 bytes, SHA256 5545fef75436e5c0959e04eb165bcfe4b9ee8eff19780c28768ff29961503376. adb install -r returned Success and the installed base.apk hash equals the local APK. The counter fix itself is not yet verified on the headset; that needs a worn run showing Unselect lines with the correct hand and incrementing leftCycles/rightCycles. Gate B acceptance remains pending. Not committed.
+
+## 2026-11-13 — Gate B cycle run on headset (user performed, log analysed)
+
+Run 15:44–15:53 on the installed 5545fef7… APK; log Logs/brickbloom-gateb-cycles.log (ignored). 0 Unity errors/exceptions.
+
+- Counter fix verified on device: every Unselect line carries the correct hand and grab type, and leftCycles/rightCycles increment (first process ended at left 21, right 23).
+- Cycles: 45 Select (Left 19 pinch + 2 palm, Right 22 pinch + 2 palm), 44 Unselect, 2 RecoveryReset. The 20-per-hand target is met; palm coverage is only 2 per hand. Select count is one short of Unselect+Reset (45 vs 46); not explained.
+- Scale stayed (1,1,1) on every release; both RecoveryReset entries returned the cube to the tray pose.
+- Delay before the cube can be grabbed is hand-tracking acquisition time, not range: after launch/resume the app keeps running frames while all interactors report tracked=False/connected=False, then grabs work as soon as a tracked hand reaches the cube. Measured with 2 s sampling: launch 1 hands tracked within 1.9 s; relaunch between 5.9 and 8.0 s; resumes mostly 0.1–2.1 s, one resume 10–12 s. Cause on the system/SDK side versus app side not determined. The app gives no visual cue that hands are not ready yet.
+- Relaunch recovery: second process started with the cube at the tray pose and a right pinch grab succeeded 11.3 s after Startup.
+- Not evidenced: tracking loss during a grab (no TrackingLostDuringGrab reset was logged; both resets were ReleasedOutOfReach(Right), i.e. the cube was released more than 0.85 m from the tray), and pause/menu while holding (no ApplicationPaused or SystemFocusLostWhileSelected reset logged; grabs did work again after each resume).
+- Other observations: frequent HMDUnmounted/HMDMounted flips during use (proximity sensor), and a FirstPersonLocomotor "ground could not be found" warning from the comprehensive rig's PlayerController at startup; neither investigated.
+
+Gate B acceptance not declared: tracking-loss-while-holding and menu-while-holding remain unverified. No code changes in this step.
+
+## 2026-11-13 — "Cannot regrab after snap-back" report; reach diagnostics build installed
+
+User held the cube, moved the hand out of view, the cube returned to the tray, and they then could not grab it again. Log (same process, 16:00:34–16:01:39): right pinch Select, then RecoveryReset reason=ReleasedOutOfReach(Right) at 16:00:42 with the hand still reported tracked, so the TrackingLostDuringGrab path was not exercised; the release happened before any tracked/connected flag dropped. For the following ~57 s both hands were tracked, no Select occurred, and the closest wrist-to-cube sample was 0.336 m (successful grabs earlier had wrist distances of roughly 0.18–0.30 m). No errors. Bug versus insufficient reach is undetermined from wrist distance at 2 s sampling; reading HandGrabInteractor/Grabbable source showed no evident stuck state. Of the two earlier out-of-reach resets, one was followed by a successful grab only after a pause/resume and the other by no further grab attempt in the log.
+
+Design gap noted (not changed): tracking loss is only detected if the hand is invalid/disconnected at the Unselect instant; a release that precedes the flag drop within 0.85 m of the tray leaves the cube where it was released.
+
+Diagnostics only (no behaviour change) in GateBCubeDiagnostics.cs: index/thumb tip distance to the cube, pinching flag, interactor state, candidate/interactable presence on each Tracking line; a State line on every interactor state change; 0.5 s sampling while a tracked wrist is within 0.45 m. Batch-mode Android build succeeded (0 errors, 4 warnings; Logs/brickbloom-gateb-reachdiag-build.log); APK SHA256 3cdbf09a4083ad7bebefe8bd0f6d82926edf0218d453fa63f8d38ee87598308e installed with adb install -r and installed hash verified equal. Edit Mode tests not rerun. Reproduction on headset pending. Not committed.
+
+## 2026-11-13 — Regrab-after-snap-back analysed with reach diagnostics: no stuck state found
+
+Run on APK 3cdbf09a… (Logs/brickbloom-gateb-regrab.log, process started 16:08:26). User held the cube and moved the hand behind the back. 0 Unity errors/exceptions.
+
+- Successful grabs in this run entered Hover with index/thumb tips about 0.08–0.11 m from the cube centre and Select at about 0.05–0.11 m (tray grab at 16:08:44: tip 0.065–0.082 m, wrist about (0.00,0.88–0.91,0.31–0.36)).
+- 16:10:15 Select (Right, pinch) then 16:10:16 RecoveryReset reason=ReleasedOutOfReach(Right); the interactor went Select->Hover->Normal with the hand still tracked. Again no TrackingLostDuringGrab: the release precedes any tracked/connected flag change, so that branch remains unexercised on hardware. Earlier releases in this run (16:08:57, 16:09:09, 16:10:10) were within 0.85 m and left the cube where released.
+- After the reset the cube was at the tray (0,0.78,0.55). Over the next ~27 s there were 10+ pinch gestures from both hands, but the closest index-tip distance to the cube was 0.153 m and pinches happened at 0.19–0.36 m, with wrists clustered near (0.0,0.92,0.24), i.e. about 7–12 cm short in Z of the successful tray grab. The interactor never reported candidate=True, so it never entered Hover; it kept cycling Normal/Disabled on each mid-air pinch (other interactors in the group taking the gesture). This is the SDK behaving as configured for a hand out of near-grab range, not a latched state from the reset.
+- Conclusion: the "cannot regrab" case in this run is the pinch landing short of the cube, not a defect in grab state. Why the user under-reaches after a snap-back is not established; likely contributors are that the cube has no in-range feedback or depth cue (unlit flat colour, no highlight on hover). A render-versus-transform offset is not indicated (the same process grabbed at the tray with 6–8 cm tip distance) but is not strictly excluded.
+
+Open items: tracking-loss-while-holding and menu-while-holding still unverified; no code change in this step; nothing committed.
+
+## 2026-11-13 — Grab colour feedback and post-release tracking handling added; installed, hardware test pending
+
+Finding that motivated the change: in the 16:10 run the grab ended 1.1 s after Select while the hand was still moving behind the user (pinching=False, tracked=True), so the runtime drops the pinch before reporting any tracking loss; waiting behind the back happens after the piece has already been released.
+
+- New Assets/BrickBloom/XR/GrabStateColorFeedback.cs on CubeRoot: MaterialPropertyBlock tint of the Visual renderer from HandGrabInteractable state (Hover yellow, Select green, otherwise the material colour). Serialized references; logs an error and disables itself if they are missing.
+- GateBCubeDiagnostics: each Unselect logs a ReleaseTracking line (tracked, connected, hand/index/thumb confidence). Release with low hand, index or thumb confidence resets to the tray (LowConfidenceAtRelease); a hand reported invalid/disconnected within 0.5 s after a normal release also resets (TrackingLostAfterRelease, serialized window). Neither is counted as a completed cycle. This is a heuristic: whether confidence actually drops in the behind-the-back case, and whether it false-triggers on ordinary releases, is unknown until the next headset log.
+- XRFoundationSetup: ConfigureGrabFeedback helper (also called from ConfigureGrabbableCube), narrow batch entry point ConfigureGateBFeedback, and CheckScene now requires the feedback component.
+- Scene changed through the Editor API only (ConfigureGateBFeedback in batch mode, preflight passed). Compared with a pre-change copy the scene gained 18 lines (component reference, the new component, the new serialized float) and lost none; Unity also reordered some existing prefab-override entries without changing their content.
+- No BrickBloom.Core change; Edit Mode tests not rerun. Batch-mode Android build succeeded (Logs/brickbloom-gateb-feedback-build.log); APK 90,180,771 bytes, SHA256 e29161838e211f8595bf924ccb709cef63d2bf39c57d7aa180239941524175c8, installed with adb install -r and installed hash verified equal. Not verified on the headset yet. Not committed.
+
+## 2026-11-13 — Headset run of colour feedback and release-tracking heuristic (user performed)
+
+APK e2916183…; logs Logs/brickbloom-gateb-feedback.log and -feedback-2.log (process 28275, 17:05–17:13). 0 Unity errors/exceptions.
+
+- 17:05:28–17:05:46: about ten pinches with fingertips 0.15–0.25 m from the cube, no Hover, no grab (hand short of the cube along the line of sight). From 17:11:45 the user reached further: 16 Select in total, each preceded by Normal->Hover at 0.045–0.112 m index-tip distance. User reports seeing the cube turn yellow and then being able to grab; colour feedback is thereby user-confirmed for Hover (Select colour not separately confirmed).
+- Release handling: 11 normal releases logged tracked/connected/hand/index/thumb confidence all True and left the cube in place (no false reset in this sample; rightCycles reached 11). One release at 17:12:55.6 logged indexConfident=False, thumbConfident=False with tracked=True, and produced RecoveryReset reason=LowConfidenceAtRelease(Right); in the preceding 1.5 s the wrist pose was frozen at (0.226,0.928,-0.371), i.e. behind the user. The cube returned to the tray and was grabbed again 4.2 s later.
+- A different behind-the-back excursion (17:12:28, wrist Z about -0.32) kept the grab alive and the cube was released normally in front at 17:12:29.8.
+- The runtime never reported tracked=False or connected=False on an active hand in this run (180 samples), so TrackingLostDuringGrab and TrackingLostAfterRelease remain unexercised. Observed behaviour when the hand is hidden: pose freezes, tracked stays True, finger confidence drops, and the pinch is eventually released.
+
+Gate B status: grab/release cycles, colour feedback and low-confidence recovery observed on hardware; palm coverage is thin (2 per hand earlier), left hand not exercised on this build, menu-while-holding not evidenced, strict tracking-lost flag path not reachable so far. Acceptance not declared. Nothing committed.
+
+## 2026-11-13 — Left hand, palm grabs and tracking-lost path observed on headset (user performed)
+
+Same APK e2916183…, process 28275, 17:17:45–17:20:21 (Logs/brickbloom-gateb-feedback-2.log). 0 Unity errors/exceptions.
+
+- 18 Select in this window: Left 3 pinch + 7 palm, Right 5 pinch + 3 palm. Counters ended leftCycles=7, rightCycles=19 for the process; every normal release logged tracked/connected and hand/index/thumb confidence True and left the cube in place.
+- TrackingLostDuringGrab(Left) fired 3 times (17:19:07, 17:19:35, 17:19:54): ReleaseTracking showed tracked=False, connected=False, and the cube returned to the tray each time. User report for these: while holding the cube they touched a controller, the cube turned back to blue and the virtual hand was replaced by a virtual controller. So the strict tracking-lost branch is reached when the runtime switches that hand from hand tracking to the controller, not by hiding the hand. After the first two resets the cube was grabbed again from the tray (17:19:32, 17:19:49).
+- Focus loss at 17:19:55.15 came 0.4 s after the third reset, so the cube was already released; SystemFocusLostWhileSelected/ApplicationPaused-while-held were still not hit as such.
+
+Gate B evidence now on hardware: 20+ cycles per hand (earlier run), pinch and palm on both hands, colour feedback (Hover user-confirmed), low-confidence recovery (1 hit, 0 false resets observed), tracking-lost recovery (3 hits via controller takeover), pause/resume and relaunch recovery. Not evidenced: focus loss while a hand is still holding the cube. Acceptance left for the user to declare. Nothing committed.
+
+## 2026-11-13 — Gate B hardware acceptance (user decision)
+
+User accepted Gate B after reviewing the log findings above. Recorded in docs/validation/gate-b-hardware.json with what was and was not evidenced (focus loss while still holding, and the Select colour, are not separately confirmed). The agent did not perform the hardware test; it analysed ADB logcat captures of the user's runs on the installed APK e2916183… whose hash matches the local build.
+
+How to grab, as established on hardware: bring the fingertips to the cube until it turns yellow (about 8–11 cm from its centre), then close thumb and index (pinch) or curl middle and ring fingers around it (palm); it turns green while held. There is no distance grab. After launch or resume wait for hand tracking (up to about 12 s observed). Picking up a controller while holding returns the cube to the tray.
+
+Commit scope: Gate B implementation and this session's changes only (XRFoundationSetup.cs, XRFoundation.unity, ComprehensiveInteractors prefab, Assets/BrickBloom/XR scripts, gate-b build/hardware JSON, PROGRESS.md). Left uncommitted as before: URP global settings, Graphics/Project/ShaderGraph/URPProject settings, TutorialInfo URP.png, android-meta/android-xr JSON, OVRBuildConfig, StreamingAssets.meta, SceneTemplateSettings.json. Not pushed.
