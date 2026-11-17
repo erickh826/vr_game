@@ -132,6 +132,75 @@ namespace BrickBloom.Tests
             }
         }
 
+        [Test] public void DwellTimerFiresOncePerContinuousTouch()
+        {
+            var timer = new DwellTimer(1.0);
+            Assert.That(timer.Tick(true, 0.4), Is.False);
+            Assert.That(timer.Progress, Is.EqualTo(0.4).Within(1e-9));
+            Assert.That(timer.Tick(true, 0.4), Is.False);
+            Assert.That(timer.Tick(true, 0.4), Is.True);
+            Assert.That(timer.IsLatched, Is.True);
+            Assert.That(timer.Progress, Is.EqualTo(1.0));
+            // Still touching: no repeat.
+            for (int i = 0; i < 10; i++) Assert.That(timer.Tick(true, 1.0), Is.False);
+            // Lift, then a fresh full dwell is needed.
+            Assert.That(timer.Tick(false, 0.1), Is.False);
+            Assert.That(timer.IsLatched, Is.False);
+            Assert.That(timer.Progress, Is.Zero);
+            Assert.That(timer.Tick(true, 0.9), Is.False);
+            Assert.That(timer.Tick(true, 0.1), Is.True);
+        }
+
+        [Test] public void DwellTimerRestartsWhenTheTouchIsInterruptedAndIgnoresBadDeltas()
+        {
+            var timer = new DwellTimer(1.0);
+            Assert.That(timer.Tick(true, 0.9), Is.False);
+            Assert.That(timer.Tick(false, 0.0), Is.False);
+            Assert.That(timer.Tick(true, 0.9), Is.False);
+            Assert.That(timer.Tick(true, double.NaN), Is.False);
+            Assert.That(timer.Tick(true, -5.0), Is.False);
+            Assert.That(timer.Tick(true, double.PositiveInfinity), Is.False);
+            Assert.That(timer.Progress, Is.EqualTo(0.9).Within(1e-9));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new DwellTimer(0.0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new DwellTimer(double.NaN));
+        }
+
+        [Test] public void PieceResetLeavesTheBoardAndReturnsToItsSupplyPose()
+        {
+            var go = new GameObject("piece-under-test");
+            try
+            {
+                var piece = go.AddComponent<BrickPiece>();
+                var tray = new Vector3(0.3f, 0.0145f, 0.05f);
+                piece.Initialize(null, "p01", BrickKinds.TwoByFour, BrickColors.Red, null, tray, Quaternion.identity);
+                int resetEvents = 0;
+                bool placedWhenNotified = false;
+                piece.ResetRequested += () => { resetEvents++; placedWhenNotified = piece.IsPlaced; };
+
+                piece.PlaceAt(new Vector3(0.05f, 0.0435f, 0.07f), BoardPose.ToLocalRotation(1));
+                Assert.That(piece.IsPlaced, Is.True);
+                piece.ReturnToTray();
+                Assert.That(piece.transform.localPosition.x, Is.EqualTo(0.05f).Within(1e-6f), "a placed piece must not return to the tray");
+
+                piece.ResetToTray();
+                Assert.That(resetEvents, Is.EqualTo(1));
+                Assert.That(placedWhenNotified, Is.True, "subscribers release XR ownership before the piece state changes");
+                Assert.That(piece.IsPlaced, Is.False);
+                Assert.That(piece.IsHeld, Is.False);
+                Assert.That(Vector3.Distance(piece.transform.localPosition, tray), Is.LessThan(1e-6f));
+                Assert.That(Quaternion.Angle(piece.transform.localRotation, Quaternion.identity), Is.LessThan(1e-3f));
+
+                // An unplaced, held piece also ends up in the tray and not held.
+                piece.SetHeld(true);
+                piece.transform.localPosition = Vector3.one;
+                piece.ResetToTray();
+                Assert.That(piece.IsHeld, Is.False);
+                Assert.That(Vector3.Distance(piece.transform.localPosition, tray), Is.LessThan(1e-6f));
+                Assert.That(resetEvents, Is.EqualTo(2));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(go); }
+        }
+
         [Test] public void BoardPoseRoundTripsPositionsAndQuarterTurns()
         {
             var point = SnapResolver.Center(new BrickSlot { kind = BrickKinds.TwoByFour, x = 2, y = 1, z = 4, turns = 1 });

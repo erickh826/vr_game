@@ -227,3 +227,40 @@ APK fc353102…, Logs/brickbloom-workbench-step2b.log (capture started after the
 - Rejections dropped from 20 (previous run) to 3 for one full build. The 3.2 cm vertical tolerance is unchanged; the user did not ask to widen it.
 - The user did not mention the board sinking again in this run; not explicitly confirmed as fixed.
 - Follow-up from the user: the board did not sink again after locomotion was disabled. Step 2 committed on feature/offline-brick-workbench (not pushed).
+
+## 2026-11-13 — Phase 3 step 3: reset, progress and completion feedback (not yet on headset)
+
+Requested by the user before going remote; the headset was disconnected, so nothing in this step is hardware verified.
+
+- Core: DwellTimer (hold-to-confirm, fires once per continuous touch, rearms when the touch ends).
+- Presentation: BrickPiece.ResetToTray raises ResetRequested first, then clears placed/held and applies the supply pose. BrickWorkbench.ResetBuild resets every piece, then BrickBoard.Reset, then PlacementChanged. BuildProgressDisplay shows one pip per slot behind the board (grey, green when placed, gold with a 4 s bouncing wave on completion).
+- XR: BrickGrabAdapter handles ResetRequested (CancelIfHeld("Reset"), clears the pending lock, re-enables the grab interactables). ResetDwellButton fires ResetBuild when an index fingertip stays on the cap for 1 s; hands that are selecting something or have invalid tracking are ignored. Logs [BrickBloom Reset] TouchBegin/Fired and [BrickBloom Workbench] Reset/Celebration.
+- Editor: BrickWorkbenchSetup.ConfigureSessionControls adds ProgressPip/ResetButton materials, the ProgressPip prefab, BuildProgressDisplay and a ResetButton (base, cap, legacy TextMesh "RESET" label) left of the board on the near side. The scene diff is additive only (0 removed lines); 4 HandGrabInteractors are referenced.
+
+Evidence: Edit Mode 78/78 passed (3 new: DwellTimer x2, piece reset). Android build succeeded (docs/validation/workbench-step3-build.json). APK not installed: no device connected. Not committed.
+
+Unverified on hardware: button reachability and accidental triggering, the 1 s dwell feel, whether the TextMesh label renders under URP on Quest, pip visibility behind the build, reset while a piece is held, and grabbing pieces again after reset.
+
+## 2026-11-16 — Step 3 on headset (user performed) and fixes
+
+APK 709bc23b…, Logs/brickbloom-workbench-step3.log, 0 exceptions. User report: button and RESET label visible; pips visible and not hidden by the build; completion feedback clear enough; 1 s dwell feels right; pieces can be grabbed and rebuilt after reset; no accidental resets. Log shows 5 resets (cleared 0, 0, 1, 6, 1) and 9 snaps.
+
+- Bug (user report + log): reset while holding a piece did not return the held piece. Log 17:47:24 shows Release Cancelled reason=Reset for p02, but HandGrabInteractor.ForceRelease only sets an unselect override that takes effect on the interactor's next update, so the SDK kept writing the transform after the supply pose was applied and the later Unselect was ignored. Fix: BrickGrabAdapter keeps _forcedReleasePending and re-applies ReturnToTray when the forced Unselect arrives or the Grabbable has no selecting points (logs ForcedReleaseCompleted). The same path serves pause/focus-loss cancels.
+- User: the button was a little hard to reach down to. BrickWorkbenchSetup.RaiseResetButton raises the base to 4 cm (cap top 5.2 cm) and extends the touch zone to 4 cm above the cap, 7 cm square. Scene diff: 8 changed lines.
+
+Evidence: Edit Mode 78/78 passed. Android build succeeded; APK SHA256 5425a483a784809f8e1e1e5df2638a9e3bafa257930e94ab5a962ade9fb729b7 installed and installed hash verified equal. The two fixes are not yet verified on the headset. Not committed.
+
+## 2026-11-16 — Step 3 retest (user performed) and button height
+
+APK 5425a483…, Logs/brickbloom-workbench-step3b.log (capture ended early when ADB restarted for the next build), 0 exceptions.
+
+- User: reset while holding a piece now returns everything and the piece can be grabbed again; nothing else broke. Log 18:22:22 shows ForcedReleaseCompleted | piece=p03 | source=Unselect.
+- User: a real-world obstacle sits at the current button height and the cabled headset makes moving awkward; asked for the button to be higher. RaiseResetButton base height changed from 4 cm to 8 cm (cap top 9.2 cm, touch zone up to 13.2 cm).
+
+Evidence: Android build succeeded; APK SHA256 331aaf308c96750508cd6c0ac0860874c9a0717e9ac232bd516da34d6332f417 installed and installed hash verified equal. The new height is not yet verified on the headset. Not committed.
+
+## 2026-11-17 — Step 3 final button settings
+
+- User decided against the 8 cm height (it was never tried on the headset) and asked for the previous 4 cm button with a slightly shorter hold. RaiseResetButton now sets base height 4 cm (cap top 5.2 cm, touch zone up to 9.2 cm) and dwell 0.8 s (was 1 s); the ResetDwellButton default is 0.8 s as well. Scene diff: 6 changed lines.
+
+Evidence: Edit Mode 78/78 passed. Android build succeeded (docs/validation/workbench-step3-build.json). APK SHA256 6c94305ac22aa9bb1d587a58f99fe63eedf077cb7a8c928455b09ab288186f22 installed and installed hash verified equal. The 4 cm height was used in the 2026-11-16 retest; the 0.8 s dwell is not yet verified on the headset. Committed at the user's request.

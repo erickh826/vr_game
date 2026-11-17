@@ -35,6 +35,9 @@ namespace BrickBloom.XR
         private bool _releasePending;
         // Placed pieces stop being grabbable; applied on the next Update, outside the SDK's release callbacks.
         private bool _lockPending;
+        // ForceRelease only takes effect on the interactor's next update; until the Grabbable has no selecting
+        // points the SDK still writes the transform, so the return to the supply pose is applied again then.
+        private bool _forcedReleasePending;
         private bool _subscribed;
 
         // Raised after the SDK selection has ended and the piece transform is no longer written by the SDK.
@@ -64,6 +67,7 @@ namespace BrickBloom.XR
             _handGrabInteractable.WhenSelectingInteractorViewRemoved += HandleSelectingInteractorRemoved;
             _handGrabInteractable.WhenStateChanged += HandleInteractableStateChanged;
             _grabbable.WhenPointerEventRaised += HandlePointerEventRaised;
+            _piece.ResetRequested += HandleResetRequested;
             _subscribed = true;
         }
 
@@ -75,6 +79,7 @@ namespace BrickBloom.XR
             _handGrabInteractable.WhenSelectingInteractorViewRemoved -= HandleSelectingInteractorRemoved;
             _handGrabInteractable.WhenStateChanged -= HandleInteractableStateChanged;
             _grabbable.WhenPointerEventRaised -= HandlePointerEventRaised;
+            _piece.ResetRequested -= HandleResetRequested;
             if (IsHeld)
             {
                 ClearActiveHand();
@@ -84,6 +89,7 @@ namespace BrickBloom.XR
 
         private void Update()
         {
+            if (_forcedReleasePending && _grabbable.SelectingPointsCount == 0) CompleteForcedRelease("Update");
             if (!_lockPending) return;
             _lockPending = false;
             _handGrabInteractable.enabled = false;
@@ -101,15 +107,38 @@ namespace BrickBloom.XR
             if (!hasFocus) CancelIfHeld("SystemFocusLost");
         }
 
-        // Also the entry point for reset: cancels an active grab without counting it as a user release.
+        // Reset: end any grab first, then make a previously placed piece grabbable again.
+        private void HandleResetRequested()
+        {
+            CancelIfHeld("Reset");
+            _lockPending = false;
+            _handGrabInteractable.enabled = true;
+            var grabInteractable = _handGrabInteractable.GetComponent<GrabInteractable>();
+            if (grabInteractable != null) grabInteractable.enabled = true;
+        }
+
+        // Cancels an active grab without counting it as a user release.
         public void CancelIfHeld(string reason)
         {
             if (!IsHeld) return;
             var interactor = _activeInteractor;
             // Clear first so the Unselect raised by ForceRelease is not treated as a user release.
             ClearActiveHand();
-            if (interactor != null) interactor.ForceRelease();
+            if (interactor != null)
+            {
+                interactor.ForceRelease();
+                _forcedReleasePending = true;
+            }
+
             Finish(BrickReleaseKind.Cancelled, reason);
+        }
+
+        private void CompleteForcedRelease(string source)
+        {
+            _forcedReleasePending = false;
+            EnforceKinematicAndScale();
+            _piece.ReturnToTray();
+            Debug.Log($"[BrickBloom Piece] ForcedReleaseCompleted | piece={_piece.PieceId} | source={source}");
         }
 
         private void HandleSelectingInteractorAdded(IInteractorView interactorView)
@@ -122,6 +151,8 @@ namespace BrickBloom.XR
                 : GrabTypeFlags.None;
             _hasActiveHand = true;
             _releasePending = false;
+            // A new grab supersedes a forced release that has not completed.
+            _forcedReleasePending = false;
             _piece.SetHeld(true);
         }
 
@@ -173,7 +204,11 @@ namespace BrickBloom.XR
         {
             EnforceKinematicAndScale();
             // A forced release clears the active hand before the SDK raises Unselect; it was already finished.
-            if (!_hasActiveHand) return;
+            if (!_hasActiveHand)
+            {
+                if (_forcedReleasePending) CompleteForcedRelease("Unselect");
+                return;
+            }
 
             IHand hand = _activeInteractor != null ? _activeInteractor.Hand : null;
             bool trackingLost = hand != null && (!hand.IsTrackedDataValid || !hand.IsConnected);

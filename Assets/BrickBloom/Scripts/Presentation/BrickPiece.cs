@@ -70,6 +70,19 @@ namespace BrickBloom.Presentation
             ApplyLocalPose(boardLocalPosition, boardLocalRotation);
         }
 
+        // Raised at the start of ResetToTray so the XR adapter can end any grab and make the piece grabbable again.
+        public event System.Action ResetRequested;
+
+        // Reset transaction for one piece: XR ownership is released by subscribers first, then the piece
+        // leaves the board and returns to its supply pose. The caller clears the board model.
+        public void ResetToTray()
+        {
+            ResetRequested?.Invoke();
+            IsPlaced = false;
+            IsHeld = false;
+            ApplyLocalPose(_trayLocalPosition, _trayLocalRotation);
+        }
+
         private void ApplyLocalPose(Vector3 localPosition, Quaternion localRotation)
         {
             transform.localPosition = localPosition;

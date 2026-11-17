@@ -160,6 +160,158 @@ namespace BrickBloom.Editor
             catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
         }
 
+        // Phase 3 step 3: hold-to-reset button, progress pips and completion feedback on the existing workbench.
+        public static void ConfigureSessionControls()
+        {
+            try
+            {
+                XRFoundationSetup.RequireEnvironment();
+                var scene = EditorSceneManager.OpenScene(XRFoundationSetup.ScenePath, OpenSceneMode.Single);
+                var workbenches = UnityEngine.Object.FindObjectsByType<BrickWorkbench>(FindObjectsSortMode.None);
+                if (workbenches.Length != 1) throw new InvalidOperationException("Expected exactly 1 BrickWorkbench.");
+                var workbench = workbenches[0];
+                if (workbench.GetComponent<BuildProgressDisplay>() != null ||
+                    UnityEngine.Object.FindObjectsByType<ResetDwellButton>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length != 0)
+                    throw new InvalidOperationException("Session controls already exist. Review/edit them instead of regenerating.");
+
+                string pipPath = $"{PrefabFolder}/ProgressPip.prefab";
+                if (File.Exists(pipPath)) throw new InvalidOperationException(pipPath + " already exists.");
+                if (!BlueprintLoader.TryLoad(AssetDatabase.LoadAssetAtPath<TextAsset>(BlueprintPath).text, out var parsed, out var error))
+                    throw new InvalidOperationException(error);
+
+                var pipObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                pipObject.name = "ProgressPip";
+                UnityEngine.Object.DestroyImmediate(pipObject.GetComponent<Collider>());
+                var pipRenderer = pipObject.GetComponent<MeshRenderer>();
+                pipRenderer.sharedMaterial = OpaqueUnlitMaterial("ProgressPip", new Color(0.22f, 0.22f, 0.25f));
+                pipRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                var pipPrefab = PrefabUtility.SaveAsPrefabAsset(pipObject, pipPath);
+                UnityEngine.Object.DestroyImmediate(pipObject);
+                if (pipPrefab == null) throw new InvalidOperationException("Failed to save " + pipPath);
+
+                var progress = workbench.gameObject.AddComponent<BuildProgressDisplay>();
+                progress.Configure(workbench, pipPrefab.GetComponent<Renderer>());
+                EditorUtility.SetDirty(progress);
+
+                var hands = UnityEngine.Object.FindObjectsByType<HandGrabInteractor>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                    .OrderBy(h => h.name, StringComparer.Ordinal).ToArray();
+                if (hands.Length < 2) throw new InvalidOperationException("Expected at least 2 HandGrabInteractors in the interaction rig.");
+
+                // Left of the board on the near side; the supply area is on the right.
+                float halfWidth = parsed.boardWidth * Pitch / 2f, halfDepth = parsed.boardDepth * Pitch / 2f;
+                var button = new GameObject("ResetButton");
+                button.transform.SetParent(workbench.transform, false);
+                button.transform.localPosition = new Vector3(-halfWidth - 0.06f, 0f, -halfDepth + 0.03f);
+
+                var baseRenderer = ButtonPart("Base", button.transform, new Vector3(0f, 0.005f, 0f), new Vector3(0.06f, 0.01f, 0.06f));
+                baseRenderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialFolder}/Board_Gray.mat");
+                if (baseRenderer.sharedMaterial == null) throw new InvalidOperationException("Board_Gray material missing.");
+                var capRenderer = ButtonPart("Cap", button.transform, new Vector3(0f, 0.016f, 0f), new Vector3(0.045f, 0.012f, 0.045f));
+                capRenderer.sharedMaterial = OpaqueUnlitMaterial("ResetButton", new Color(1f, 0.45f, 0.1f));
+
+                var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font != null && font.material != null)
+                {
+                    // Flat on the table, between the button and the user.
+                    var label = new GameObject("Label");
+                    label.transform.SetParent(button.transform, false);
+                    label.transform.localPosition = new Vector3(0f, 0.001f, -0.045f);
+                    label.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                    label.transform.localScale = Vector3.one * 0.002f;
+                    var text = label.AddComponent<TextMesh>();
+                    text.text = "RESET";
+                    text.font = font;
+                    text.fontSize = 64;
+                    text.characterSize = 1f;
+                    text.anchor = TextAnchor.MiddleCenter;
+                    text.alignment = TextAlignment.Center;
+                    text.color = Color.white;
+                    label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+                }
+                else
+                {
+                    Debug.LogWarning("BrickBloom: built-in font unavailable; reset button has no label.");
+                }
+
+                var reset = button.AddComponent<ResetDwellButton>();
+                reset.Configure(workbench, hands, capRenderer.transform, capRenderer);
+                EditorUtility.SetDirty(reset);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, XRFoundationSetup.ScenePath);
+                AssetDatabase.SaveAssets();
+                XRFoundationSetup.CheckScene();
+                Debug.Log($"BrickBloom session controls configured with {hands.Length} hand interactors (hardware verification pending).");
+                EditorApplication.Exit(0);
+            }
+            catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
+        // Raises the existing reset button so the fingertip does not have to reach down to table level.
+        public static void RaiseResetButton()
+        {
+            try
+            {
+                XRFoundationSetup.RequireEnvironment();
+                var scene = EditorSceneManager.OpenScene(XRFoundationSetup.ScenePath, OpenSceneMode.Single);
+                var buttons = UnityEngine.Object.FindObjectsByType<ResetDwellButton>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                if (buttons.Length != 1) throw new InvalidOperationException("Expected exactly 1 ResetDwellButton.");
+                var button = buttons[0];
+                var basePart = button.transform.Find("Base");
+                var cap = button.transform.Find("Cap");
+                if (basePart == null || cap == null) throw new InvalidOperationException("ResetButton Base or Cap missing.");
+
+                const float baseHeight = 0.04f, capHeight = 0.012f, dwellSeconds = 0.8f;
+                basePart.localPosition = new Vector3(0f, baseHeight / 2f, 0f);
+                basePart.localScale = new Vector3(0.06f, baseHeight, 0.06f);
+                cap.localPosition = new Vector3(0f, baseHeight + capHeight / 2f, 0f);
+
+                var serialized = new SerializedObject(button);
+                var touchSize = serialized.FindProperty("_touchSize");
+                if (touchSize == null) throw new InvalidOperationException("ResetDwellButton._touchSize not found.");
+                // From the base up to 4 cm above the cap top.
+                touchSize.vector3Value = new Vector3(0.07f, baseHeight + capHeight + 0.04f, 0.07f);
+                var dwell = serialized.FindProperty("_dwellSeconds");
+                if (dwell == null) throw new InvalidOperationException("ResetDwellButton._dwellSeconds not found.");
+                dwell.floatValue = dwellSeconds;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(button);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, XRFoundationSetup.ScenePath);
+                XRFoundationSetup.CheckScene();
+                Debug.Log("BrickBloom reset button raised (hardware verification pending).");
+                EditorApplication.Exit(0);
+            }
+            catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
+        private static MeshRenderer ButtonPart(string name, Transform parent, Vector3 localPosition, Vector3 size)
+        {
+            var part = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            part.name = name;
+            UnityEngine.Object.DestroyImmediate(part.GetComponent<Collider>());
+            part.transform.SetParent(parent, false);
+            part.transform.localPosition = localPosition;
+            part.transform.localScale = size;
+            var partRenderer = part.GetComponent<MeshRenderer>();
+            partRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            return partRenderer;
+        }
+
+        private static Material OpaqueUnlitMaterial(string name, Color color)
+        {
+            string path = $"{MaterialFolder}/{name}.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) throw new InvalidOperationException("URP Unlit shader missing.");
+            var material = new Material(shader) { name = name };
+            material.SetColor("_BaseColor", color);
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
         private static Material HighlightMaterial() =>
             TransparentUnlitMaterial("GrabHighlight", new Color(1f, 0.85f, 0.1f, 0.45f));
 

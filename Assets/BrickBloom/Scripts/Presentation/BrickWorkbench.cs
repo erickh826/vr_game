@@ -108,6 +108,22 @@ namespace BrickBloom.Presentation
             return true;
         }
 
+        // Sends every piece back to the supply area and clears the board. Each piece releases its XR grab
+        // before its transform is written.
+        public void ResetBuild(string reason)
+        {
+            if (Board == null) return;
+            int cleared = Board.PlacedCount;
+            foreach (var piece in _pieces)
+            {
+                if (piece != null) piece.ResetToTray();
+            }
+
+            Board.Reset();
+            Debug.Log($"[BrickBloom Workbench] Reset | reason={reason} | cleared={cleared} | placed={Board.PlacedCount}/{Board.TotalCount}");
+            PlacementChanged?.Invoke();
+        }
+
         // Read-only preview of where a held piece would snap if released now; null when it would be rejected.
         // Never reserves the slot: release resolves availability again.
         public string PreviewTargetSlotId(BrickPiece piece)
