@@ -122,3 +122,8 @@ InitTestScene*.unity*
 /Keystore/
 *.keystore
 *.jks
+
+# Local generated files; keep Unity source assets and their GUID metadata trackable.
+/Assets/Resources/OVRBuildConfig.asset
+/Assets/Resources/OVRBuildConfig.asset.meta
+/docs/screenshots/*.mp4

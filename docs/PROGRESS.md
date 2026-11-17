@@ -293,3 +293,7 @@ APK 643a0cba…, Logs/brickbloom-levels.log, 0 exceptions. Log shows all three l
 - Open: the user reports NEXT is visible from the start. Code and log only show it being usable after completion; not reproduced or explained yet. It does not affect play.
 
 Committed at the user's request. The release APK is still not installed or uploaded.
+
+## 2026-11-17 — Preparing the GitHub submission link
+
+Added narrow ignore rules for the generated OVRBuildConfig asset and local MP4s under docs/screenshots; Unity source assets and .meta GUID files remain trackable. The bundled Kenney Brick Kit models are accompanied by their CC0 1.0 license. User requested publishing the GitHub repository and pushing main for competition access; preserve all existing uncommitted work and exclude it from the publish commit.
