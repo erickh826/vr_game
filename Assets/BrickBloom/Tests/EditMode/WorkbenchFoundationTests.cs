@@ -132,6 +132,46 @@ namespace BrickBloom.Tests
             }
         }
 
+        [TestCase("bridge-001", 6)]
+        [TestCase("pyramid-002", 7)]
+        [TestCase("castle-003", 9)]
+        public void EveryLevelBlueprintLoadsAndCanBeBuiltBottomUpFromTheSupply(string id, int expectedBricks)
+        {
+            string json = File.ReadAllText(Path.Combine(Application.dataPath, "BrickBloom/Data/Blueprints/" + id + ".json"));
+            Assert.That(BlueprintLoader.TryLoad(json, out var blueprint, out var error), Is.True, error);
+            Assert.That(blueprint.id, Is.EqualTo(id));
+            Assert.That(blueprint.bricks.Length, Is.EqualTo(expectedBricks));
+            // Same order the workbench uses for its pieces.
+            var ordered = blueprint.bricks.OrderBy(s => s.y).ThenBy(s => s.id, StringComparer.Ordinal).ToArray();
+            var board = new BrickBoard(blueprint);
+            var resolver = new SnapResolver();
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                Assert.That(board.TryRegisterPiece("p" + i, ordered[i].kind, ordered[i].color), Is.True);
+                Assert.That(resolver.Resolve(board, "p" + i, 0, SupplyLayout.Center(i, blueprint.boardWidth)), Is.Null,
+                    "a piece must not snap from its supply pose");
+            }
+
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                Assert.That(resolver.TrySnap(board, "p" + i, ordered[i].turns, SnapResolver.Center(ordered[i]), out var target), Is.True,
+                    ordered[i].id + " could not be placed in bottom-up order");
+                Assert.That(BrickRules.Matches(target, ordered[i].kind, ordered[i].color, ordered[i].turns), Is.True);
+            }
+
+            Assert.That(board.IsComplete, Is.True);
+        }
+
+        [Test] public void LevelSignExplainsHowToPlayAndWhatComesNext()
+        {
+            string building = LevelSignDisplay.Compose(1, 3, 2, 6);
+            Assert.That(building, Does.StartWith("Level 1 of 3\n"));
+            Assert.That(building, Does.Contain("Pinch").And.Contain("RESET"));
+            Assert.That(LevelSignDisplay.Compose(1, 3, 6, 6), Does.Contain("complete").And.Contain("NEXT for the next build"));
+            Assert.That(LevelSignDisplay.Compose(3, 3, 9, 9), Does.Contain("back to level 1"));
+            Assert.That(LevelSignDisplay.Compose(1, 1, 6, 6), Does.Contain("RESET").And.Not.Contain("NEXT"));
+        }
+
         [Test] public void DwellTimerFiresOncePerContinuousTouch()
         {
             var timer = new DwellTimer(1.0);

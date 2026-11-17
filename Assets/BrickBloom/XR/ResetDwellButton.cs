@@ -5,13 +5,19 @@ using UnityEngine;
 
 namespace BrickBloom.XR
 {
-    // Hold-to-reset button: an index fingertip resting on the cap for the dwell time resets the build.
-    // Reads fingertip poses only; a hand that is holding a piece is ignored so it cannot reset by accident.
+    // Hold-to-confirm button: an index fingertip resting on the cap for the dwell time resets the build
+    // or, for the NextLevel action, moves on to the next blueprint (shown only while the build is complete).
+    // Reads fingertip poses only; a hand that is holding a piece is ignored so it cannot fire by accident.
     [DisallowMultipleComponent]
     public sealed class ResetDwellButton : MonoBehaviour
     {
+        public enum ButtonAction { Reset = 0, NextLevel = 1 }
+
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
+        [SerializeField] private ButtonAction _action = ButtonAction.Reset;
+        // NextLevel only: the visible parts, hidden until the build is complete.
+        [SerializeField] private GameObject _visualRoot;
         [SerializeField] private BrickWorkbench _workbench;
         [SerializeField] private HandGrabInteractor[] _hands;
         [SerializeField] private Transform _cap;
@@ -36,9 +42,17 @@ namespace BrickBloom.XR
             _capRenderer = capRenderer;
         }
 
+        public void ConfigureNextLevel(GameObject visualRoot, Color idleColor)
+        {
+            _action = ButtonAction.NextLevel;
+            _visualRoot = visualRoot;
+            _idleColor = idleColor;
+        }
+
         private void OnEnable()
         {
-            if (_workbench == null || _hands == null || _hands.Length == 0 || _cap == null || _capRenderer == null || _dwellSeconds <= 0f)
+            if (_workbench == null || _hands == null || _hands.Length == 0 || _cap == null || _capRenderer == null || _dwellSeconds <= 0f ||
+                (_action == ButtonAction.NextLevel && _visualRoot == null))
             {
                 Debug.LogError("[BrickBloom Reset] ResetDwellButton is missing a serialized reference; disabling.", this);
                 enabled = false;
@@ -62,14 +76,19 @@ namespace BrickBloom.XR
 
         private void Update()
         {
-            bool touching = _workbench.Board != null && AnyFingertipInside();
-            if (touching && !_wasTouching) Debug.Log("[BrickBloom Reset] TouchBegin");
+            bool available = _workbench.Board != null &&
+                (_action == ButtonAction.Reset || _workbench.Board.IsComplete);
+            if (_visualRoot != null && _visualRoot.activeSelf != available) _visualRoot.SetActive(available);
+
+            bool touching = available && AnyFingertipInside();
+            if (touching && !_wasTouching) Debug.Log($"[BrickBloom Button] TouchBegin | action={_action}");
             _wasTouching = touching;
 
             if (_timer.Tick(touching, Time.deltaTime))
             {
-                Debug.Log("[BrickBloom Reset] Fired");
-                _workbench.ResetBuild("ResetButton");
+                Debug.Log($"[BrickBloom Button] Fired | action={_action}");
+                if (_action == ButtonAction.NextLevel) _workbench.TryAdvanceLevel("NextButton");
+                else _workbench.ResetBuild("ResetButton");
             }
 
             Show((float)_timer.Progress);

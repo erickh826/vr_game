@@ -117,3 +117,8 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Release signing keystore and its password: kept locally by the owner, never committed.
+/Keystore/
+*.keystore
+*.jks

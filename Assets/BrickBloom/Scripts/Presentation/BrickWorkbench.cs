@@ -11,6 +11,8 @@ namespace BrickBloom.Presentation
     public sealed class BrickWorkbench : MonoBehaviour
     {
         [SerializeField] private TextAsset _blueprintJson;
+        // Levels after the first one, in play order. May be empty.
+        [SerializeField] private TextAsset[] _laterBlueprints;
         [SerializeField] private Transform _boardOrigin;
         [SerializeField] private BrickPiece _twoByTwoPrefab;
         [SerializeField] private BrickPiece _twoByFourPrefab;
@@ -28,9 +30,15 @@ namespace BrickBloom.Presentation
         public BrickBoard Board { get; private set; }
         public Transform BoardOrigin => _boardOrigin;
         public IReadOnlyList<BrickPiece> Pieces => _pieces;
+        public int LevelIndex { get; private set; }
+        public int LevelCount => 1 + (_laterBlueprints?.Length ?? 0);
 
         // Raised after a placement has been committed and the piece pose applied.
         public event Action PlacementChanged;
+        // Raised after a level's board and pieces have been created; views rebuild from the new board.
+        public event Action LevelChanged;
+
+        public void ConfigureLaterBlueprints(TextAsset[] laterBlueprints) => _laterBlueprints = laterBlueprints;
 
         public void Configure(TextAsset blueprintJson, Transform boardOrigin, BrickPiece twoByTwoPrefab,
             BrickPiece twoByFourPrefab, Material red, Material white, Material blue, Material yellow)
@@ -53,12 +61,44 @@ namespace BrickBloom.Presentation
                 return;
             }
 
-            if (!BlueprintLoader.TryLoad(_blueprintJson.text, out var blueprint, out var error))
+            LoadLevel(0);
+        }
+
+        // Moves on to the next blueprint (wrapping to the first). Only allowed once the current build is
+        // complete: every piece is then placed and locked, so no hand owns a transform that is destroyed.
+        public bool TryAdvanceLevel(string reason)
+        {
+            if (Board == null || !Board.IsComplete) return false;
+            int next = (LevelIndex + 1) % LevelCount;
+            Debug.Log($"[BrickBloom Workbench] AdvanceLevel | reason={reason} | from={LevelIndex + 1} | to={next + 1} | levels={LevelCount}");
+            LoadLevel(next);
+            return Board != null;
+        }
+
+        private void LoadLevel(int index)
+        {
+            TextAsset source = index == 0 ? _blueprintJson : _laterBlueprints[index - 1];
+            if (source == null)
+            {
+                Fail($"blueprint for level {index + 1} is missing");
+                return;
+            }
+
+            if (!BlueprintLoader.TryLoad(source.text, out var blueprint, out var error))
             {
                 Fail(error);
                 return;
             }
 
+            foreach (var old in _pieces)
+            {
+                if (old == null) continue;
+                old.gameObject.SetActive(false);
+                Destroy(old.gameObject);
+            }
+
+            _pieces.Clear();
+            LevelIndex = index;
             Board = new BrickBoard(blueprint);
             // Bottom-up order keeps supply positions stable regardless of JSON array order.
             var ordered = blueprint.bricks.OrderBy(s => s.y).ThenBy(s => s.id, StringComparer.Ordinal).ToArray();
@@ -80,7 +120,8 @@ namespace BrickBloom.Presentation
                 _pieces.Add(piece);
             }
 
-            Debug.Log($"[BrickBloom Workbench] Ready | blueprint={blueprint.id} | slots={Board.TotalCount} | pieces={_pieces.Count}");
+            Debug.Log($"[BrickBloom Workbench] Ready | level={LevelIndex + 1}/{LevelCount} | blueprint={blueprint.id} | slots={Board.TotalCount} | pieces={_pieces.Count}");
+            LevelChanged?.Invoke();
         }
 
         // Release transaction for a piece the user let go of. The caller has already ended the XR selection.
@@ -168,6 +209,7 @@ namespace BrickBloom.Presentation
             _pieces.Clear();
             Board = null;
             enabled = false;
+            LevelChanged?.Invoke();
         }
     }
 }

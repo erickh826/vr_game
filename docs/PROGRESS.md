@@ -264,3 +264,30 @@ Evidence: Android build succeeded; APK SHA256 331aaf308c96750508cd6c0ac0860874c9
 - User decided against the 8 cm height (it was never tried on the headset) and asked for the previous 4 cm button with a slightly shorter hold. RaiseResetButton now sets base height 4 cm (cap top 5.2 cm, touch zone up to 9.2 cm) and dwell 0.8 s (was 1 s); the ResetDwellButton default is 0.8 s as well. Scene diff: 6 changed lines.
 
 Evidence: Edit Mode 78/78 passed. Android build succeeded (docs/validation/workbench-step3-build.json). APK SHA256 6c94305ac22aa9bb1d587a58f99fe63eedf077cb7a8c928455b09ab288186f22 installed and installed hash verified equal. The 4 cm height was used in the 2026-11-16 retest; the 0.8 s dwell is not yet verified on the headset. Committed at the user's request.
+
+## 2026-11-17 — Submission story draft
+
+Updated docs/PROJECT_STORY.md into a submission-ready Markdown layout with a project snapshot and screenshot insertion guidance. The angle remains hand-practice motions played as a six-brick desk build; no project screenshots are currently available. No gameplay, scene, or package change. The draft states that the app is a game and not a medical device. Not submitted.
+
+## 2026-11-17 — Levels, instruction sign and release build (not yet on headset)
+
+Requested by the user for the competition submission (deadline 2026-11-19 04:00 HKT).
+
+- Levels: BrickWorkbench takes later blueprints, exposes LevelIndex/LevelCount/LevelChanged and TryAdvanceLevel (only when the build is complete, so no held piece is destroyed; wraps to level 1). New blueprints pyramid-002 (7 bricks, 4 layers) and castle-003 (9 bricks, 3 layers). BrickGhostRenderer and BuildProgressDisplay rebuild on LevelChanged.
+- ResetDwellButton gains a NextLevel action with a visual root that is hidden until the build is complete. Log tag is now [BrickBloom Button] TouchBegin/Fired | action=….
+- LevelSignDisplay: English how-to-play text while building, "complete / Hold NEXT" afterwards.
+- Editor: BrickWorkbenchSetup.ConfigureLevels adds the blueprints, a green NEXT button 10 cm behind RESET and the LevelSign (dark panel + TextMesh) behind the board. Scene diff is additive (0 removed lines).
+- Release: ReleaseBuild.BuildReleaseApk builds a non-development APK as com.brickbloom.mr signed with Keystore/brickbloom-release.keystore (git-ignored, kept by the user); player settings are changed in memory and restored. One line the build left in ProjectSettings.asset (AndroidKeystoreName) was restored to its previous value.
+
+Evidence: Edit Mode 82/82 passed (4 new cases: three blueprints buildable bottom-up from the supply, sign text). Development build succeeded (docs/validation/workbench-levels-build.json); APK SHA256 643a0cba36b3216a55b37c15b1d564f2b1473029d5212e344ee6b7b89937956b installed and installed hash verified equal. Release build succeeded: Builds/Quest/BrickBloomMR-release.apk, SHA256 c3fb6788cf02ddf436e8a28e2f5dd698c05b0cb67b46328b7757bb28a3d2c3b8, package com.brickbloom.mr, versionCode 1, arm64, no debuggable flag, signer CN=BrickBloom. The release APK has not been installed or uploaded.
+
+Unverified on hardware: level switching, NEXT button reach and visibility, sign readability and position, the far supply row of the 9-brick level, the 0.8 s dwell. Not committed.
+
+## 2026-11-17 — Levels on headset (user performed)
+
+APK 643a0cba…, Logs/brickbloom-levels.log, 0 exceptions. Log shows all three levels completed (6/6, 7/7, 9/9), NEXT fired after each completion (1→2→3→1) and a reset afterwards.
+
+- User: sign text is readable; level switching replaces pieces, ghosts and pips; the far supply row of the 9-brick level is reachable; 0.8 s dwell is fine; no accidental RESET when reaching for NEXT.
+- Open: the user reports NEXT is visible from the start. Code and log only show it being usable after completion; not reproduced or explained yet. It does not affect play.
+
+Committed at the user's request. The release APK is still not installed or uploaded.

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "id": "pyramid-002",
+  "boardWidth": 8,
+  "boardDepth": 8,
+  "bricks": [
+    {
+      "id": "b01",
+      "kind": "2x4",
+      "color": "red",
+      "x": 1,
+      "y": 0,
+      "z": 2,
+      "turns": 0
+    },
+    {
+      "id": "b02",
+      "kind": "2x4",
+      "color": "yellow",
+      "x": 3,
+      "y": 0,
+      "z": 2,
+      "turns": 0
+    },
+    {
+      "id": "b03",
+      "kind": "2x4",
+      "color": "red",
+      "x": 5,
+      "y": 0,
+      "z": 2,
+      "turns": 0
+    },
+    {
+      "id": "b04",
+      "kind": "2x4",
+      "color": "blue",
+      "x": 2,
+      "y": 1,
+      "z": 2,
+      "turns": 1
+    },
+    {
+      "id": "b05",
+      "kind": "2x4",
+      "color": "blue",
+      "x": 2,
+      "y": 1,
+      "z": 4,
+      "turns": 1
+    },
+    {
+      "id": "b06",
+      "kind": "2x4",
+      "color": "white",
+      "x": 3,
+      "y": 2,
+      "z": 2,
+      "turns": 0
+    },
+    {
+      "id": "b07",
+      "kind": "2x2",
+      "color": "yellow",
+      "x": 3,
+      "y": 3,
+      "z": 3,
+      "turns": 0
+    }
+  ]
+}

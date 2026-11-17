@@ -286,6 +286,109 @@ namespace BrickBloom.Editor
             catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
         }
 
+        // Levels: two more blueprints, a NEXT button shown when a build is complete, and an English instruction sign.
+        public static void ConfigureLevels()
+        {
+            try
+            {
+                XRFoundationSetup.RequireEnvironment();
+                var scene = EditorSceneManager.OpenScene(XRFoundationSetup.ScenePath, OpenSceneMode.Single);
+                var workbenches = UnityEngine.Object.FindObjectsByType<BrickWorkbench>(FindObjectsSortMode.None);
+                if (workbenches.Length != 1) throw new InvalidOperationException("Expected exactly 1 BrickWorkbench.");
+                var workbench = workbenches[0];
+                var buttons = UnityEngine.Object.FindObjectsByType<ResetDwellButton>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                if (buttons.Length != 1 || workbench.GetComponent<LevelSignDisplay>() != null || workbench.LevelCount != 1)
+                    throw new InvalidOperationException("Levels already configured (or the reset button is missing). Review/edit instead of regenerating.");
+                var resetButton = buttons[0];
+
+                var later = new[] { "pyramid-002", "castle-003" }.Select(id =>
+                {
+                    var asset = AssetDatabase.LoadAssetAtPath<TextAsset>($"Assets/BrickBloom/Data/Blueprints/{id}.json");
+                    if (asset == null) throw new InvalidOperationException("Blueprint TextAsset missing: " + id);
+                    if (!BlueprintLoader.TryLoad(asset.text, out _, out var loadError)) throw new InvalidOperationException(id + ": " + loadError);
+                    return asset;
+                }).ToArray();
+                workbench.ConfigureLaterBlueprints(later);
+                EditorUtility.SetDirty(workbench);
+
+                if (!BlueprintLoader.TryLoad(AssetDatabase.LoadAssetAtPath<TextAsset>(BlueprintPath).text, out var parsed, out var error))
+                    throw new InvalidOperationException(error);
+                float halfDepth = parsed.boardDepth * Pitch / 2f;
+                var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font == null || font.material == null) throw new InvalidOperationException("Built-in font unavailable.");
+                var gray = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialFolder}/Board_Gray.mat");
+                if (gray == null) throw new InvalidOperationException("Board_Gray material missing.");
+
+                // NEXT button: same column as RESET, 10 cm further from the user; same size as the reset button.
+                const float baseHeight = 0.04f, capHeight = 0.012f;
+                var resetSerialized = new SerializedObject(resetButton);
+                var handsProperty = resetSerialized.FindProperty("_hands");
+                var hands = Enumerable.Range(0, handsProperty.arraySize)
+                    .Select(i => (HandGrabInteractor)handsProperty.GetArrayElementAtIndex(i).objectReferenceValue).ToArray();
+                if (hands.Length < 2 || hands.Any(h => h == null)) throw new InvalidOperationException("Reset button hand references are incomplete.");
+
+                var next = new GameObject("NextButton");
+                next.transform.SetParent(workbench.transform, false);
+                next.transform.localPosition = resetButton.transform.localPosition + new Vector3(0f, 0f, 0.10f);
+                var visuals = new GameObject("Visuals");
+                visuals.transform.SetParent(next.transform, false);
+                var nextBase = ButtonPart("Base", visuals.transform, new Vector3(0f, baseHeight / 2f, 0f), new Vector3(0.06f, baseHeight, 0.06f));
+                nextBase.sharedMaterial = gray;
+                var nextCap = ButtonPart("Cap", visuals.transform, new Vector3(0f, baseHeight + capHeight / 2f, 0f), new Vector3(0.045f, capHeight, 0.045f));
+                var green = new Color(0.2f, 0.8f, 0.3f);
+                nextCap.sharedMaterial = OpaqueUnlitMaterial("NextButton", green);
+                var nextLabel = Label("Label", visuals.transform, font, "NEXT", 0.002f);
+                nextLabel.transform.localPosition = new Vector3(0f, 0.001f, -0.045f);
+                nextLabel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+                var nextButton = next.AddComponent<ResetDwellButton>();
+                nextButton.Configure(workbench, hands, nextCap.transform, nextCap);
+                nextButton.ConfigureNextLevel(visuals, green);
+                var nextSerialized = new SerializedObject(nextButton);
+                nextSerialized.FindProperty("_touchSize").vector3Value = resetSerialized.FindProperty("_touchSize").vector3Value;
+                nextSerialized.FindProperty("_dwellSeconds").floatValue = resetSerialized.FindProperty("_dwellSeconds").floatValue;
+                nextSerialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(nextButton);
+
+                // Instruction sign: behind the progress pips, above the tallest build, leaning back towards the user's eyes.
+                var sign = new GameObject("LevelSign");
+                sign.transform.SetParent(workbench.transform, false);
+                sign.transform.localPosition = new Vector3(0f, 0.17f, halfDepth + 0.10f);
+                sign.transform.localRotation = Quaternion.Euler(20f, 0f, 0f);
+                var panel = ButtonPart("Panel", sign.transform, new Vector3(0f, 0f, 0.004f), new Vector3(0.30f, 0.09f, 0.004f));
+                panel.sharedMaterial = OpaqueUnlitMaterial("SignPanel", new Color(0.08f, 0.09f, 0.12f));
+                var signText = Label("Text", sign.transform, font, LevelSignDisplay.Compose(1, 1 + later.Length, 0, 1), 0.0018f);
+                var signDisplay = workbench.gameObject.AddComponent<LevelSignDisplay>();
+                signDisplay.Configure(workbench, signText);
+                EditorUtility.SetDirty(signDisplay);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, XRFoundationSetup.ScenePath);
+                AssetDatabase.SaveAssets();
+                XRFoundationSetup.CheckScene();
+                Debug.Log($"BrickBloom levels configured: {1 + later.Length} levels (hardware verification pending).");
+                EditorApplication.Exit(0);
+            }
+            catch (Exception ex) { Debug.LogException(ex); EditorApplication.Exit(1); }
+        }
+
+        private static TextMesh Label(string name, Transform parent, Font font, string content, float scale)
+        {
+            var label = new GameObject(name);
+            label.transform.SetParent(parent, false);
+            label.transform.localScale = Vector3.one * scale;
+            var text = label.AddComponent<TextMesh>();
+            text.text = content;
+            text.font = font;
+            text.fontSize = 64;
+            text.characterSize = 1f;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.color = Color.white;
+            label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            return text;
+        }
+
         private static MeshRenderer ButtonPart(string name, Transform parent, Vector3 localPosition, Vector3 size)
         {
             var part = GameObject.CreatePrimitive(PrimitiveType.Cube);

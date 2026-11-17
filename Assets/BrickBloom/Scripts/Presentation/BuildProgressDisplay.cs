@@ -46,11 +46,25 @@ namespace BrickBloom.Presentation
             }
 
             _workbench.PlacementChanged += Refresh;
+            _workbench.LevelChanged += Rebuild;
         }
 
         private void OnDisable()
         {
-            if (_workbench != null) _workbench.PlacementChanged -= Refresh;
+            if (_workbench == null) return;
+            _workbench.PlacementChanged -= Refresh;
+            _workbench.LevelChanged -= Rebuild;
+        }
+
+        // A new level has a new slot count: drop the old pips; Update builds the new row.
+        private void Rebuild()
+        {
+            foreach (var pip in _pips)
+                if (pip != null) Destroy(pip.gameObject);
+            _pips.Clear();
+            _built = false;
+            _complete = false;
+            _celebrating = false;
         }
 
         private void Update()

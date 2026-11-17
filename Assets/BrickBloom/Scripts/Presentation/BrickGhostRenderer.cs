@@ -41,11 +41,26 @@ namespace BrickBloom.Presentation
             }
 
             _workbench.PlacementChanged += Refresh;
+            _workbench.LevelChanged += Rebuild;
         }
 
         private void OnDisable()
         {
-            if (_workbench != null) _workbench.PlacementChanged -= Refresh;
+            if (_workbench == null) return;
+            _workbench.PlacementChanged -= Refresh;
+            _workbench.LevelChanged -= Rebuild;
+        }
+
+        // A new level has a new board: drop the old ghosts; Update builds the new set.
+        private void Rebuild()
+        {
+            foreach (var ghost in _ghosts.Values)
+                if (ghost != null) Destroy(ghost.gameObject);
+            _ghosts.Clear();
+            _colors.Clear();
+            _previewed.Clear();
+            _previewedLastFrame.Clear();
+            _built = false;
         }
 
         private void Update()
