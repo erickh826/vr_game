@@ -269,6 +269,8 @@ Evidence: Edit Mode 78/78 passed. Android build succeeded (docs/validation/workb
 
 Updated docs/PROJECT_STORY.md into a submission-ready Markdown layout with a project snapshot and screenshot insertion guidance. The angle remains hand-practice motions played as a six-brick desk build; no project screenshots are currently available. No gameplay, scene, or package change. The draft states that the app is a game and not a medical device. Not submitted.
 
+Reorganized the story under the Devpost prompts (inspiration, gameplay, implementation, challenges, accomplishments, lessons, and next steps), incorporating the verified three-level Quest build and distinguishing the built release APK from headset validation. Kept the story under the 500-word target and retained the non-medical disclaimer. Documentation only; not submitted.
+
 ## 2026-11-17 — Levels, instruction sign and release build (not yet on headset)
 
 Requested by the user for the competition submission (deadline 2026-11-19 04:00 HKT).
